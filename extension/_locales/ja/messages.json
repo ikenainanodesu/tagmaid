@@ -1,0 +1,6 @@
+{
+  "extensionName": { "message": "TagMaid · AI タブ整理" },
+  "extensionDescription": { "message": "自分の AI でタブをグループ分け・並べ替え。プレビューを確認してから適用。ローカルでドメイン順にも並べ替えできます。" },
+  "openTagMaid": { "message": "TagMaid を開く" },
+  "openSidebar": { "message": "TagMaid サイドバーを開く" }
+}

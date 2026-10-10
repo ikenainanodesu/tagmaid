@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.test-profile/
+test-results/
+*.log
+
+# Local tooling, indexes, instructions and diagnostic state.
+/.codex/
+/.codegraph/
+/.aoci/
+/aoci*.txt
+/AGENTS.md
+
+# Credentials and local overrides must never enter a public commit.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.local.json
+*.local.toml

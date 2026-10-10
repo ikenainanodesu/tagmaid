@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="TagMaid · AI 标签整理">TagMaid · AI 标签整理</title>
+  <link rel="icon" type="image/png" href="icons/icon-32.png">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="sidepanel.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img class="mark" src="icons/icon-96.png" width="48" height="48" alt=""><div><strong>TagMaid</strong><small data-i18n="让标签，各归其位。">让标签，各归其位。</small></div></div>
+    <button id="settings-toggle" class="icon-button" title="API 设置" data-i18n-title="API 设置" aria-label="API 设置" data-i18n-aria-label="API 设置" aria-expanded="false">⚙</button>
+  </header>
+  <div class="language-row"><label for="language" data-i18n="语言">语言</label><select id="language" disabled><option value="zh-CN">简体中文</option><option value="ja">日本語</option><option value="en">English</option></select></div>
+  <main>
+    <section id="settings-panel" class="card" hidden aria-labelledby="settings-heading">
+      <div class="section-heading"><h2 id="settings-heading" data-i18n="连接你的 AI">连接你的 AI</h2><span class="eyebrow" data-i18n="仅本机保存">仅本机保存</span></div>
+      <form id="settings-form">
+        <label for="endpoint" data-i18n="API 地址">API 地址</label>
+        <input id="endpoint" type="url" placeholder="https://api.example.com/v1" required autocomplete="off" spellcheck="false">
+        <p class="help" data-i18n="填写基础地址（通常以 /v1 结尾）或完整 /chat/completions 地址。">填写基础地址（通常以 /v1 结尾）或完整 /chat/completions 地址。</p>
+        <label for="api-key" data-i18n="API 密钥">API 密钥</label>
+        <input id="api-key" type="password" placeholder="本地免密接口可留空" data-i18n-placeholder="本地免密接口可留空" autocomplete="off" spellcheck="false">
+        <label class="check"><input id="remember-key" type="checkbox"><span data-i18n="在此设备记住密钥">在此设备记住密钥</span></label>
+        <p class="help" data-i18n="默认只保留到浏览器关闭。记住后存入扩展本地存储，不同步；本地存储并非加密保险箱。">默认只保留到浏览器关闭。记住后存入扩展本地存储，不同步；本地存储并非加密保险箱。</p>
+        <label for="model" data-i18n="模型名称">模型名称</label>
+        <input id="model" placeholder="填写服务商提供的模型 ID" data-i18n-placeholder="填写服务商提供的模型 ID" required autocomplete="off" spellcheck="false">
+        <button class="primary full" type="submit" data-i18n="保存并授权 API 站点">保存并授权 API 站点</button>
+      </form>
+    </section>
+
+    <section class="intro">
+      <span class="eyebrow" data-i18n="当前窗口 · 手动整理">当前窗口 · 手动整理</span>
+      <h1><span data-i18n="把纷乱的标签，">把纷乱的标签，</span><br><span data-i18n="整理成清晰的思路。">整理成清晰的思路。</span></h1>
+      <div class="stats"><strong id="candidate-count">—</strong><span data-i18n="个待整理标签">个待整理标签</span><span class="divider"></span><span id="group-count" data-i18n="— 个已有组">— 个已有组</span><button id="refresh" class="text-button" title="刷新窗口标签" data-i18n-title="刷新窗口标签" data-i18n="刷新">刷新</button></div>
+      <p id="scope-note" class="help" data-i18n="固定标签与浏览器内部页面不参与整理。">固定标签与浏览器内部页面不参与整理。</p>
+    </section>
+
+    <section class="card" aria-labelledby="mode-heading">
+      <h2 id="mode-heading" data-i18n="如何整理">如何整理</h2>
+      <fieldset id="mode-options">
+        <legend class="sr-only" data-i18n="整理模式">整理模式</legend>
+        <label class="mode"><input type="radio" name="mode" value="rebuild"><span><strong data-i18n="全部重新整理">全部重新整理</strong><small data-i18n="解除现有分组，重新分类">解除现有分组，重新分类</small></span><span class="mode-number">01</span></label>
+        <label class="mode"><input type="radio" name="mode" value="new" checked><span><strong data-i18n="仅创建新组">仅创建新组</strong><small data-i18n="保留已有组，只整理未分组标签">保留已有组，只整理未分组标签</small></span><span class="mode-number">02</span></label>
+        <label class="mode"><input type="radio" name="mode" value="merge"><span><strong data-i18n="允许加入已有组">允许加入已有组</strong><small data-i18n="为未分组标签找到合适的新组或已有组">为未分组标签找到合适的新组或已有组</small></span><span class="mode-number">03</span></label>
+        <label class="mode"><input type="radio" name="mode" value="sort-ai"><span><strong data-i18n="AI 排序 · 不分组">AI 排序 · 不分组</strong><small data-i18n="按主题排列未分组标签，放到所有组后面">按主题排列未分组标签，放到所有组后面</small></span><span class="mode-number">04</span></label>
+        <label class="mode"><input type="radio" name="mode" value="sort-domain"><span><strong data-i18n="域名排序 · 不分组">域名排序 · 不分组</strong><small data-i18n="按完整域名升序排列，本地完成，无需 AI">按完整域名升序排列，本地完成，无需 AI</small></span><span class="mode-number">05</span></label>
+      </fieldset>
+      <label id="instruction-label" for="instruction"><span data-i18n="额外要求">额外要求</span> <span class="optional" data-i18n="可选">可选</span></label>
+      <textarea id="instruction" rows="2" maxlength="1500" placeholder="例如：按项目分类；把阅读资料放在一起。" data-i18n-placeholder="例如：按项目分类；把阅读资料放在一起。"></textarea>
+    </section>
+
+    <details id="privacy" class="disclosure">
+      <summary><span id="payload-label" data-i18n="发送前查看数据范围">发送前查看数据范围</span> <span id="payload-count"></span></summary>
+      <p id="privacy-note" class="help" data-i18n="只发送标题、去掉查询参数和片段的网址，以及必要的分组编号。模式 3 还发送已有组名和组内网页信息。标题和网址路径本身仍可能含有私人信息。不读取正文。">只发送标题、去掉查询参数和片段的网址，以及必要的分组编号。模式 3 还发送已有组名和组内网页信息。标题和网址路径本身仍可能含有私人信息。不读取正文。</p>
+      <pre id="payload-preview"></pre>
+    </details>
+
+    <div class="generate-row"><button id="generate" class="primary" data-i18n="✦ 生成分组预览">✦ 生成分组预览</button><button id="cancel" class="secondary" hidden data-i18n="取消">取消</button></div>
+    <p id="connection-note" class="help center" data-i18n="先连接你的 AI，整理从这里开始。">先连接你的 AI，整理从这里开始。</p>
+    <div id="sorting-wait" class="sorting-wait" hidden>
+      <div class="sorting-sprite" aria-hidden="true"><img src="images/tagmaid-sorting-strip.png" width="1152" height="192" alt=""></div>
+      <div class="sorting-copy"><strong data-i18n="正在整理思路…">正在整理思路…</strong><p data-i18n="预览准备中，标签保持原样。">预览准备中，标签保持原样。</p></div>
+    </div>
+    <div id="status" role="status" aria-live="polite" hidden></div>
+
+    <section id="preview" hidden aria-labelledby="preview-heading">
+      <div class="section-heading"><div><span class="eyebrow" data-i18n="先预览，再应用">先预览，再应用</span><h2 id="preview-heading" data-i18n="你的分组方案">你的分组方案</h2></div><button id="add-group" class="text-button" data-i18n="＋ 新组">＋ 新组</button></div>
+      <p id="preview-help" class="help" data-i18n="可修改新组名称和颜色，调整标签去向。“排除”将保留该标签原样。">可修改新组名称和颜色，调整标签去向。“排除”将保留该标签原样。</p>
+      <div id="preview-groups"></div>
+      <div class="apply-bar"><div class="apply-feedback"><span id="plan-summary"></span><p id="preview-notice" role="status" aria-live="polite" hidden></p><p id="apply-status" role="status" aria-live="polite" hidden></p></div><button id="apply" class="primary" data-i18n="确认应用">确认应用</button></div>
+      <button id="discard" class="text-button full" data-i18n="放弃这份预览">放弃这份预览</button>
+    </section>
+  </main>
+  <footer><span data-i18n="整理由你决定。">整理由你决定。</span><button id="undo" class="text-button" disabled data-i18n="撤销最近一次整理">撤销最近一次整理</button></footer>
+</body>
+</html>

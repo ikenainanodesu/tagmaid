@@ -1,0 +1,6 @@
+{
+  "extensionName": { "message": "TagMaid · AI 标签整理" },
+  "extensionDescription": { "message": "主动发起、预览确认，用自己的 AI 整理标签分组或只排序，也可在本地按域名排序。" },
+  "openTagMaid": { "message": "打开 TagMaid" },
+  "openSidebar": { "message": "打开 TagMaid 侧栏" }
+}

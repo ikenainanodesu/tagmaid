@@ -1,0 +1,6 @@
+{
+  "extensionName": { "message": "TagMaid · AI Tab Organizer" },
+  "extensionDescription": { "message": "Preview and confirm tab grouping or sorting with your own AI, or sort locally by domain." },
+  "openTagMaid": { "message": "Open TagMaid" },
+  "openSidebar": { "message": "Open the TagMaid sidebar" }
+}
