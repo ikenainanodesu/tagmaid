@@ -8,15 +8,13 @@
 
 ## 插件截图
 
-以下为真实 Chrome 侧栏截图，使用本地演示数据，API 密钥为空。截图与本文使用相同语言；蓝色外观展示 DeepSeek 彩蛋，预览由本地模拟 API 生成。
+以下为真实 Chrome 侧栏截图，使用本地演示数据、空 API 密钥，预览由本地模拟 API 生成。
 
-| 默认外观 | DeepSeek 彩蛋 |
-| --- | --- |
-| <img src="assets/screenshots/zh-CN-default.png" width="340" alt="默认外观"> | <img src="assets/screenshots/zh-CN-deepseek.png" width="340" alt="DeepSeek 彩蛋"> |
+<p align="center"><img src="assets/screenshots/zh-CN-default.png" width="430" alt="默认外观"></p>
 
 ## 安装与使用
 
-1. 从 [Releases](https://github.com/ikenainanodesu/tagmaid/releases) 下载并解压 `TagMaid-v1.1.0.zip`，或克隆本仓库。
+1. 从 [Releases](https://github.com/ikenainanodesu/tagmaid/releases) 下载并解压 `TagMaid-v1.1.1.zip`，或克隆本仓库。
 2. Chrome 打开 `chrome://extensions`，Edge 打开 `edge://extensions`，开启「开发者模式／开发人员模式」，点击「加载已解压的扩展程序／加载解压缩的扩展」。
 3. 选择解压后包含 `manifest.json` 的 `TagMaid` 文件夹；使用源码时选择 `extension`。
 4. 从浏览器扩展菜单固定 TagMaid 后点击工具栏图标，或按 **Alt+Shift+Y** 打开侧栏。快捷键可在 Chrome 的 `chrome://extensions/shortcuts` 或 Edge 的 `edge://extensions/shortcuts` 修改。
@@ -47,9 +45,9 @@
 
 支持 **English、简体中文、日本語**。首次跟随浏览器语言，其他语言回退英文；手动选择仅保存在本机。切换语言保留预览和编辑，不重新请求 API。AI 新组名默认使用开始生成时的语言，附加要求明确指定其他语言时优先遵从。网页标题、已有或已编辑的组名不翻译。浏览器管理的扩展文案另行跟随浏览器语言。
 
-## DeepSeek 彩蛋
+## DeepSeek API
 
-保存 `api.deepseek.com` 官方 HTTPS 接口配置后，会解锁蓝色鲸鱼娘彩蛋：侧栏 Logo、等待动画和工具栏图标一同切换。换成其他接口恢复绿色原版；本地域名排序沿用当前配置的皮肤。扩展管理页的安装图标不变。
+使用 DeepSeek 官方 API（`api.deepseek.com`）时，界面会有变化。
 
 ## 隐私与安全
 
@@ -87,7 +85,7 @@ Windows 安装当前版本的浏览器后，分别运行 `npm run test:chrome` �
 
 ## 许可证
 
-版权所有 © 2026 ikenainanodesu。TagMaid 的原创代码、文档、Logo、图标和动画素材统一采用 **GNU GPL 第 3 版，仅限该版本**（`GPL-3.0-only`）。完整条款见 [LICENSE](LICENSE)，项目授权声明见 [NOTICE](NOTICE)。第三方组件保留各自许可证。安装包包含这两个文件，[v1.1.0 对应源码](https://github.com/ikenainanodesu/tagmaid/tree/v1.1.0) 在本仓库提供。
+版权所有 © 2026 ikenainanodesu。TagMaid 的原创代码、文档、Logo、图标和动画素材统一采用 **GNU GPL 第 3 版，仅限该版本**（`GPL-3.0-only`）。完整条款见 [LICENSE](LICENSE)，项目授权声明见 [NOTICE](NOTICE)。第三方组件保留各自许可证。安装包包含这两个文件，[v1.1.1 对应源码](https://github.com/ikenainanodesu/tagmaid/tree/v1.1.1) 在本仓库提供。
 
 ## 反馈
 

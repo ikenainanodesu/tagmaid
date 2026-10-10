@@ -8,15 +8,13 @@
 
 ## スクリーンショット
 
-実際の Chrome サイドバーを、ローカルのデモデータと空の API キーで撮影しています。画像は本ガイドと同じ言語です。青い外観は DeepSeek のイースターエッグで、プレビューはローカルの模擬 API によるものです。
+実際の Chrome サイドバーを、ローカルのデモデータと空の API キーで撮影しています。プレビューはローカルの模擬 API で生成しています。
 
-| 標準の外観 | DeepSeek の外観 |
-| --- | --- |
-| <img src="assets/screenshots/ja-default.png" width="340" alt="標準の外観"> | <img src="assets/screenshots/ja-deepseek.png" width="340" alt="DeepSeek の外観"> |
+<p align="center"><img src="assets/screenshots/ja-default.png" width="430" alt="標準の外観"></p>
 
 ## インストールと使い方
 
-1. [Releases](https://github.com/ikenainanodesu/tagmaid/releases) から `TagMaid-v1.1.0.zip` をダウンロードして展開するか、このリポジトリをクローンします。
+1. [Releases](https://github.com/ikenainanodesu/tagmaid/releases) から `TagMaid-v1.1.1.zip` をダウンロードして展開するか、このリポジトリをクローンします。
 2. Chrome は `chrome://extensions`、Edge は `edge://extensions` を開き、デベロッパー／開発者モードを有効にして「パッケージ化されていない拡張機能を読み込む／展開して読み込み」を選びます。
 3. 展開した `TagMaid` フォルダーのうち、`manifest.json` を含むものを選びます。ソースから使う場合は `extension` を選びます。
 4. ブラウザーの拡張機能メニューから TagMaid を固定し、ツールバーのアイコン、または **Alt+Shift+Y** でサイドバーを開きます。ショートカットは Chrome の `chrome://extensions/shortcuts`、Edge の `edge://extensions/shortcuts` で変更できます。
@@ -47,9 +45,9 @@
 
 **English・简体中文・日本語**に対応しています。初回はブラウザーの言語に従い、それ以外では英語になります。手動選択は端末内に保存されます。言語を切り替えてもプレビューと編集内容は残り、API を再呼び出ししません。AI の新規グループ名には生成開始時の言語を使い、追加指示で別の言語を明示した場合はその指示を優先します。ページタイトルや既存・編集済みグループ名は翻訳しません。ブラウザーが管理する拡張機能の文言は、別途ブラウザーの言語に従います。
 
-## DeepSeek のイースターエッグ
+## DeepSeek API
 
-`api.deepseek.com` の公式 HTTPS API 設定を保存すると、青いクジラメイドのテーマに切り替わります。サイドバーのロゴ、待機アニメーション、ツールバーのアイコンが連動し、別の API に変更すると緑のテーマに戻ります。ローカルのドメイン順ソートでは保存済み設定のテーマを維持します。拡張機能管理画面のインストールアイコンは変わりません。
+DeepSeek の公式 API（`api.deepseek.com`）を使用すると、インターフェースの外観が変化します。
 
 ## プライバシーとセキュリティ
 
@@ -87,7 +85,7 @@ Windows に現在のブラウザーをインストールし、`npm run test:chro
 
 ## ライセンス
 
-Copyright © 2026 ikenainanodesu。TagMaid 独自のコード、文書、Logo、アイコン、アニメーション素材には **GNU GPL バージョン 3 のみ**（`GPL-3.0-only`）を適用します。全文は [LICENSE](LICENSE)、プロジェクトの通知は [NOTICE](NOTICE) を参照してください。第三者のコンポーネントはそれぞれのライセンスを保持します。配布パッケージには両ファイルを含め、[v1.1.0 に対応するソース](https://github.com/ikenainanodesu/tagmaid/tree/v1.1.0) を本リポジトリで提供します。
+Copyright © 2026 ikenainanodesu。TagMaid 独自のコード、文書、Logo、アイコン、アニメーション素材には **GNU GPL バージョン 3 のみ**（`GPL-3.0-only`）を適用します。全文は [LICENSE](LICENSE)、プロジェクトの通知は [NOTICE](NOTICE) を参照してください。第三者のコンポーネントはそれぞれのライセンスを保持します。配布パッケージには両ファイルを含め、[v1.1.1 に対応するソース](https://github.com/ikenainanodesu/tagmaid/tree/v1.1.1) を本リポジトリで提供します。
 
 ## フィードバック
 
