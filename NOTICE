@@ -1,0 +1,22 @@
+TagMaid — AI tab grouping and sorting for the Edge sidebar
+Copyright (C) 2026 ikenainanodesu
+SPDX-License-Identifier: GPL-3.0-only
+
+TagMaid is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, version 3 only.
+
+This license applies to the project's original source code, documentation,
+Logo, icons, and animation assets. Third-party components retain their own
+copyright notices and licenses; this notice does not relicense them.
+
+TagMaid is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for details.
+
+The complete license is included in LICENSE. The application example at
+the end of that standard license text does not change this project's
+explicit GPL-3.0-only choice.
+
+Project and source: https://github.com/ikenainanodesu/tagmaid
+Source for this release: https://github.com/ikenainanodesu/tagmaid/tree/v1.0.1

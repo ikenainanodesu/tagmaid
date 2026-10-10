@@ -18,5 +18,7 @@ for (const file of ['README.md', 'README.zh-CN.md', 'README.ja.md']) {
   const text = await readFile(resolve(root, file), 'utf8');
   await writeFile(resolve(target, file), text.replaceAll('src="extension/', 'src="').replaceAll('](extension/', ']('));
 }
-await copyFile(resolve(root, 'SECURITY.md'), resolve(target, 'SECURITY.md'));
+for (const file of ['SECURITY.md', 'LICENSE', 'NOTICE']) {
+  await copyFile(resolve(root, file), resolve(target, file));
+}
 console.log(`已生成可直接加载的扩展目录：${target}`);

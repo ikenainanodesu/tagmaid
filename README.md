@@ -8,7 +8,7 @@
 
 ## Install and use
 
-1. Download and extract `TagMaid-v1.0.0.zip` from [Releases](https://github.com/ikenainanodesu/tagmaid/releases), or clone this repository.
+1. Download and extract `TagMaid-v1.0.1.zip` from [Releases](https://github.com/ikenainanodesu/tagmaid/releases), or clone this repository.
 2. Open `edge://extensions`, enable **Developer mode**, and select **Load unpacked**.
 3. Choose the extracted `TagMaid` folder containing `manifest.json`; for a source checkout, choose `extension`.
 4. Click the TagMaid toolbar icon or press **Alt+Shift+Y**. Change conflicting shortcuts at `edge://extensions/shortcuts`.
@@ -64,6 +64,10 @@ npm run package
 Tests cover URL cleanup, response validation, five modes, preview changes, rollback, and undo with mock browser APIs. Static checks validate the manifest, resources, script syntax, and UI references. Packaging replaces the generated `dist/TagMaid` directory with a clean extension and all three READMEs.
 
 On Windows with Edge, `npm run test:language-browser` tests the actual sidebar in an isolated profile with a local mock API. Set `EDGE_PATH` for another Edge executable. Artifacts stay under ignored `test-results/`. These checks do not establish real-provider classification quality, retention policies, or native permission-dialog interaction.
+
+## License
+
+Copyright © 2026 ikenainanodesu. TagMaid's original code, documentation, Logo, icons, and animation assets are licensed under **GNU GPL version 3 only** (`GPL-3.0-only`). See [LICENSE](LICENSE) for the full terms and [NOTICE](NOTICE) for the project notice. Third-party components retain their own licenses. The release package includes both files; [corresponding source for v1.0.1](https://github.com/ikenainanodesu/tagmaid/tree/v1.0.1) is available in this repository.
 
 ## Feedback
 

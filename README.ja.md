@@ -8,7 +8,7 @@
 
 ## インストールと使い方
 
-1. [Releases](https://github.com/ikenainanodesu/tagmaid/releases) から `TagMaid-v1.0.0.zip` をダウンロードして展開するか、このリポジトリをクローンします。
+1. [Releases](https://github.com/ikenainanodesu/tagmaid/releases) から `TagMaid-v1.0.1.zip` をダウンロードして展開するか、このリポジトリをクローンします。
 2. `edge://extensions` で開発者モードを有効にし、「展開して読み込み」を選びます。
 3. 展開した `TagMaid` フォルダーのうち、`manifest.json` を含むものを選びます。ソースから使う場合は `extension` を選びます。
 4. ツールバーのアイコン、または **Alt+Shift+Y** でサイドバーを開きます。ショートカットは `edge://extensions/shortcuts` で変更できます。
@@ -64,6 +64,10 @@ npm run package
 テストはモックのブラウザー API で URL 処理、応答検証、五つのモード、プレビュー変更、ロールバックと復元を検証します。静的チェックはマニフェスト、リソース、構文、UI 参照を確認します。パッケージ作成では生成ディレクトリ `dist/TagMaid` を置き換え、拡張機能と三言語の README を含むクリーンな内容にします。
 
 Windows と Edge の環境では `npm run test:language-browser` で独立プロファイルとローカルの模擬 API を使い、実際のサイドバーをテストできます。`EDGE_PATH` で Edge 実行ファイルを指定できます。成果物は Git 対象外の `test-results/` に保存されます。実プロバイダーの分類品質、データ保持方針、ネイティブ権限ダイアログの操作を保証する検証ではありません。
+
+## ライセンス
+
+Copyright © 2026 ikenainanodesu。TagMaid 独自のコード、文書、Logo、アイコン、アニメーション素材には **GNU GPL バージョン 3 のみ**（`GPL-3.0-only`）を適用します。全文は [LICENSE](LICENSE)、プロジェクトの通知は [NOTICE](NOTICE) を参照してください。第三者のコンポーネントはそれぞれのライセンスを保持します。配布パッケージには両ファイルを含め、[v1.0.1 に対応するソース](https://github.com/ikenainanodesu/tagmaid/tree/v1.0.1) を本リポジトリで提供します。
 
 ## フィードバック
 

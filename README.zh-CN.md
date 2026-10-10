@@ -8,7 +8,7 @@
 
 ## 安装与使用
 
-1. 从 [Releases](https://github.com/ikenainanodesu/tagmaid/releases) 下载并解压 `TagMaid-v1.0.0.zip`，或克隆本仓库。
+1. 从 [Releases](https://github.com/ikenainanodesu/tagmaid/releases) 下载并解压 `TagMaid-v1.0.1.zip`，或克隆本仓库。
 2. 打开 `edge://extensions`，开启「开发人员模式」，点击「加载解压缩的扩展」。
 3. 选择解压后包含 `manifest.json` 的 `TagMaid` 文件夹；使用源码时选择 `extension`。
 4. 点击工具栏图标或按 **Alt+Shift+Y** 打开侧栏。快捷键可在 `edge://extensions/shortcuts` 修改。
@@ -64,6 +64,10 @@ npm run package
 测试使用模拟浏览器 API 验证网址清理、响应校验、五种模式、预览变化、回滚和撤销。静态检查验证清单、资源、脚本语法和界面引用。打包会替换生成目录 `dist/TagMaid`，产出干净的扩展及三语 README。
 
 Windows 安装 Edge 后，可运行 `npm run test:language-browser`，在独立配置中使用本地模拟 API 测试实际侧栏。可用 `EDGE_PATH` 指定 Edge 程序。产物保存在被忽略的 `test-results/`。这些检查不代表真实供应商分类质量、数据留存政策或原生权限弹窗交互已验证。
+
+## 许可证
+
+版权所有 © 2026 ikenainanodesu。TagMaid 的原创代码、文档、Logo、图标和动画素材统一采用 **GNU GPL 第 3 版，仅限该版本**（`GPL-3.0-only`）。完整条款见 [LICENSE](LICENSE)，项目授权声明见 [NOTICE](NOTICE)。第三方组件保留各自许可证。安装包包含这两个文件，[v1.0.1 对应源码](https://github.com/ikenainanodesu/tagmaid/tree/v1.0.1) 在本仓库提供。
 
 ## 反馈
 
