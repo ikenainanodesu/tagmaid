@@ -1,4 +1,4 @@
-// 在独立 Edge 配置的真实 sidePanel 页面验证；模拟服务仅用于测试副本。
+// 在独立 Chrome / Edge 配置的真实 sidePanel 页面验证；模拟服务仅用于测试副本。
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -6,7 +6,12 @@ import { mkdir, cp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const root = path.resolve(`test-results/language-${Date.now()}`);
+const browserName = process.argv[2] || 'edge';
+assert.ok(['chrome', 'edge'].includes(browserName), '浏览器参数必须为 chrome 或 edge');
+const executable = browserName === 'chrome'
+  ? process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : process.env.EDGE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const root = path.resolve(`test-results/language-${browserName}-${Date.now()}`);
 await mkdir(root, { recursive: true });
 let apiStatus = 200, pendingResponse, holdResponse = false;
 const requests = [], errors = [], layouts = [];
@@ -22,8 +27,9 @@ const server = createServer(async (req, res) => {
     if (apiStatus !== 200) { res.writeHead(apiStatus); res.end('{}'); return; }
     const payload = JSON.parse(request.messages[1].content.split('\n待分类数据：')[1]);
     const title = request.messages[0].content.includes('日本語 (Japanese)') ? '資料' : request.messages[0].content.includes('English') ? 'Reading' : '阅读';
+    const existing = payload.mode === 'merge' ? payload.existingGroups[0] : null;
     const content = payload.mode === 'sort-ai' ? { orderedTabIds: payload.tabs.map(t => t.id).reverse() }
-      : { groups: [{ title, color: 'blue', existingGroupId: null, tabIds: payload.tabs.map(t => t.id) }], ungroupedTabIds: [] };
+      : { groups: [{ title: existing?.title ?? title, color: existing?.color ?? 'blue', existingGroupId: existing?.id ?? null, tabIds: payload.tabs.map(t => t.id) }], ungroupedTabIds: [] };
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }));
   };
@@ -37,12 +43,14 @@ const manifest = JSON.parse(await readFile(path.join(extension, 'manifest.json')
 manifest.host_permissions = ['http://127.0.0.1/*'];
 await writeFile(path.join(extension, 'manifest.json'), JSON.stringify(manifest));
 const profile = path.join(root, 'profile');
-const edge = spawn(process.env.EDGE_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', [
+const browser = spawn(executable, [
   '--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-gpu', '--lang=en-US',
-  '--remote-debugging-port=0', `--user-data-dir=${profile}`, `--disable-extensions-except=${extension}`, `--load-extension=${extension}`, 'about:blank'
+  '--remote-debugging-port=0', '--enable-unsafe-extension-debugging', `--user-data-dir=${profile}`, 'about:blank'
 ], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
 let browserLog = '';
-edge.stderr.on('data', chunk => { browserLog += chunk; });
+browser.stderr.on('data', chunk => { browserLog += chunk; });
+let launchError;
+browser.on('error', error => { launchError = error; });
 let socket, id = 0;
 const calls = new Map();
 async function waitFor(fn, label) {
@@ -77,12 +85,16 @@ const language = async value => {
   await waitFor(() => get(`document.documentElement.lang === ${JSON.stringify(value)} && !document.querySelector('#language').disabled`), `语言 ${value}`);
 };
 try {
-  const portFile = await waitFor(async () => { try { return await readFile(path.join(profile, 'DevToolsActivePort'), 'utf8'); } catch { return null; } }, 'Edge 调试入口');
+  const portFile = await waitFor(async () => {
+    if (launchError) throw launchError;
+    if (browser.exitCode !== null) throw new Error(`${browserName} 已退出：${browserLog}`);
+    try { return await readFile(path.join(profile, 'DevToolsActivePort'), 'utf8'); } catch { return null; }
+  }, `${browserName} 调试入口`);
   const [port, wsPath] = portFile.trim().split(/\r?\n/);
   let connectionError;
   try {
-    await waitFor(async () => { try { return (await fetch(`http://127.0.0.1:${port}/json/version`)).ok; } catch (error) { connectionError = error.cause || error; return false; } }, 'Edge 调试服务就绪');
-  } catch (error) { console.error({ connectionError, exitCode: edge.exitCode, browserLog }); throw error; }
+    await waitFor(async () => { try { return (await fetch(`http://127.0.0.1:${port}/json/version`)).ok; } catch (error) { connectionError = error.cause || error; return false; } }, `${browserName} 调试服务就绪`);
+  } catch (error) { console.error({ connectionError, exitCode: browser.exitCode, browserLog }); throw error; }
   socket = new WebSocket(`ws://127.0.0.1:${port}${wsPath}`);
   await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, { once: true }); socket.addEventListener('error', reject, { once: true }); });
   socket.addEventListener('message', event => {
@@ -92,7 +104,9 @@ try {
       if (message.error) call?.reject(new Error(JSON.stringify(message.error))); else call?.resolve(message.result);
     } else if (message.method === 'Runtime.exceptionThrown') errors.push(message.params.exceptionDetails);
   });
-  const target = await waitFor(async () => (await cdp('Target.getTargets')).targetInfos.find(t => t.type === 'service_worker' && t.url.endsWith('/background.js')), '扩展后台');
+  // 品牌版 Chrome 不再接受 --load-extension；仅在临时测试配置开启调试加载。
+  const { id: extensionId } = await cdp('Extensions.loadUnpacked', { path: extension });
+  const target = await waitFor(async () => (await cdp('Target.getTargets')).targetInfos.find(t => t.type === 'service_worker' && t.url === `chrome-extension://${extensionId}/background.js`), '扩展后台');
   worker = (await cdp('Target.attachToTarget', { targetId: target.targetId, flatten: true })).sessionId;
   await cdp('Runtime.enable', {}, worker);
   await waitFor(() => evaluate(worker, 'typeof chrome !== "undefined" && Boolean(chrome.runtime?.id)'), '扩展后台初始化');
@@ -104,14 +118,15 @@ try {
     await chrome.storage.local.set({mode: 'sort-domain'});
     return tabs[0].windowId;
   })()`);
-  // 在扩展页中提供一次浏览器用户手势，再连接实际侧栏的独立 target。
-  const bootstrap = await cdp('Target.createTarget', { url: target.url.replace('background.js', 'sidepanel.html') });
-  const bootstrapSession = (await cdp('Target.attachToTarget', { targetId: bootstrap.targetId, flatten: true })).sessionId;
-  await waitFor(() => evaluate(bootstrapSession, 'typeof chrome !== "undefined" && Boolean(chrome.sidePanel)'), '侧栏打开入口');
-  await evaluate(bootstrapSession, `chrome.sidePanel.open({windowId: ${windowId}})`);
-  const panel = await waitFor(async () => (await cdp('Target.getTargets')).targetInfos.find(t => t.url.endsWith('/sidepanel.html') && t.targetId !== bootstrap.targetId), '实际侧栏页面');
-  await cdp('Target.closeTarget', { targetId: bootstrap.targetId });
-  const contexts = await evaluate(worker, 'chrome.runtime.getContexts({contextTypes:["SIDE_PANEL"]})');
+  // 触发真实工具栏 action，避免直接打开 HTML 掩盖入口失效。
+  assert.equal((await evaluate(worker, 'chrome.sidePanel.getPanelBehavior()')).openPanelOnActionClick, true);
+  const page = (await cdp('Target.getTargets', { filter: [{ type: 'tab', exclude: false }] })).targetInfos.find(t => t.type === 'tab' && t.url === 'about:blank');
+  await cdp('Extensions.triggerAction', { id: extensionId, targetId: page.targetId });
+  const panel = await waitFor(async () => (await cdp('Target.getTargets')).targetInfos.find(t => t.url === `chrome-extension://${extensionId}/sidepanel.html`), '实际侧栏页面');
+  const contexts = await waitFor(async () => {
+    const found = await evaluate(worker, 'chrome.runtime.getContexts({contextTypes:["SIDE_PANEL"]})');
+    return found.length ? found : null;
+  }, 'SIDE_PANEL 执行上下文');
   assert.equal(contexts.length, 1, '必须存在实际 SIDE_PANEL 执行上下文');
   ui = (await cdp('Target.attachToTarget', { targetId: panel.targetId, flatten: true })).sessionId;
   await cdp('Runtime.enable', {}, ui);
@@ -202,8 +217,43 @@ try {
   await language('ja');
   assert.match(await get(`document.querySelector('#status').textContent`), /利用枠/);
   apiStatus = 200;
+  await language('en');
+  // 补齐所有模式的真实浏览器状态验证；撤销可能重建 groupId，按属性和成员比较。
+  const state = () => evaluate(worker, `(async () => {
+    const tabs = await chrome.tabs.query({windowId: ${windowId}});
+    const groups = await chrome.tabGroups.query({windowId: ${windowId}});
+    return tabs.sort((a, b) => a.index - b.index).map(tab => {
+      const group = groups.find(g => g.id === tab.groupId);
+      return {id: tab.id, pinned: tab.pinned, group: group ? {title: group.title, color: group.color, collapsed: group.collapsed} : null};
+    });
+  })()`);
+  const modes = ['rebuild', 'new', 'merge', 'sort-ai', 'sort-domain'];
+  for (const mode of modes) {
+    await click(`input[value="${mode}"]`);
+    await waitFor(() => get(`!document.querySelector('#generate').disabled`), `${mode} 就绪`);
+    const before = await state();
+    const requestCount = requests.length;
+    await click('#generate');
+    await waitFor(() => get(`!document.querySelector('#preview').hidden && !document.querySelector('#apply').disabled`), `${mode} 预览`);
+    const previewIds = await get(`[...document.querySelectorAll('.tab-row')].map(row => Number(row.dataset.tabId))`);
+    await click('#apply');
+    await waitFor(() => get(`document.querySelector('#preview').hidden && !document.querySelector('#undo').disabled`), `${mode} 应用`);
+    const after = await state();
+    if (mode.startsWith('sort-')) {
+      assert.deepEqual(after.slice(-previewIds.length).map(t => t.id), previewIds, `${mode} 必须按预览顺序排列`);
+      assert.deepEqual(after.filter(t => t.group), before.filter(t => t.group), `${mode} 必须保留已有组`);
+    } else {
+      assert.ok(after.filter(t => previewIds.includes(t.id)).every(t => t.group), `${mode} 必须分组`);
+      if (mode === 'merge') assert.ok(after.filter(t => previewIds.includes(t.id)).every(t => t.group.title === '原有 Group 元の組' && t.group.color === 'green'));
+    }
+    assert.equal(requests.length - requestCount, mode === 'sort-domain' ? 0 : 1);
+    await click('#undo');
+    await waitFor(() => get(`document.querySelector('#status').textContent.includes('Restored')`), `${mode} 撤销`);
+    assert.deepEqual(await state(), before, `${mode} 撤销必须恢复顺序、成员和组属性`);
+  }
+  console.log('五种模式的预览、实际标签状态与撤销恢复全部通过。');
   assert.deepEqual(errors, []);
-  await writeFile(path.join(root, 'result.json'), JSON.stringify({ passed: true, browser: await cdp('Browser.getVersion'), contextType: contexts[0].contextType, layouts, requests: requests.length, errors }, null, 2));
+  await writeFile(path.join(root, 'result.json'), JSON.stringify({ passed: true, browserName, executable, browser: await cdp('Browser.getVersion'), entry: 'Extensions.triggerAction', contextType: contexts[0].contextType, modes, layouts, requests: requests.length, errors }, null, 2));
   console.log(`全部浏览器检查通过。证据：${root}`);
 } catch (error) {
   if (ui) {
@@ -215,7 +265,7 @@ try {
     try { await cdp('Browser.close'); } catch { /* 浏览器可能先断开连接。 */ }
     socket.close();
   }
-  edge.kill();
+  browser.kill();
   server.closeAllConnections();
   server.close();
 }

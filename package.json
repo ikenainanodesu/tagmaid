@@ -1,12 +1,14 @@
 {
   "name": "tagmaid",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "license": "GPL-3.0-only",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "test:language-browser": "node scripts/test-language-browser.mjs",
+    "test:chrome": "node scripts/test-language-browser.mjs chrome",
+    "test:edge": "node scripts/test-language-browser.mjs edge",
     "check": "node scripts/check.mjs",
     "package": "node scripts/package.mjs"
   },

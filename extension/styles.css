@@ -14,3 +14,11 @@
 .sorting-copy{min-width:0;overflow-wrap:anywhere}.sorting-copy strong{font-size:13px}.sorting-copy p{font-size:11px;line-height:1.7;color:var(--muted);margin:6px 0 0}
 @keyframes maid-sorting{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 @media(prefers-reduced-motion:reduce){.sorting-wait:not([hidden]) .sorting-sprite img{animation-duration:2.4s}}
+
+/* DeepSeek 彩蛋：只覆盖界面配色，不改变标签组的语义颜色。 */
+:root[data-appearance=deepseek]{color:#243567;background:#f3f5ff;--surface:#fff;--line:#dbe1f5;--muted:#67759a;--accent:#4d6bfe;--soft:#edf1ff}
+[data-appearance=deepseek] :is(button,input,select,textarea,summary):focus-visible{outline-color:#7f94ff}
+[data-appearance=deepseek] .mode:has(input:checked),[data-appearance=deepseek] #status:not(.error){border-color:#aebcfe}
+[data-appearance=deepseek] .primary:hover:not(:disabled){background:#3b55d9}
+[data-appearance=deepseek] :is(input,textarea)::placeholder{color:var(--muted)}
+@media(prefers-color-scheme:dark){:root[data-appearance=deepseek]{color:#e0e7ff;background:#151b2b;--surface:#1e2840;--line:#34456b;--muted:#9faed0;--accent:#8ba1ff;--soft:#26365a}[data-appearance=deepseek] .primary{color:#101b3d}[data-appearance=deepseek] .primary:hover:not(:disabled){background:#a6b7ff}[data-appearance=deepseek] .mode:has(input:checked),[data-appearance=deepseek] #status:not(.error){border-color:#526da8}}

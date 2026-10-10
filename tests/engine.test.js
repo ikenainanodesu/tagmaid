@@ -53,7 +53,7 @@ function fakeBrowser() {
   };
   return { api, calls, store, fail: () => { failUpdate = true; }, close: id => { tabs = tabs.filter(t => t.id !== id); reindex(); prune(); }, pin: id => { tabs.find(t => t.id === id).pinned = true; }, mutate: () => { tabs[3].url += '?new'; },
     failMove: count => { failMoveAfter = count; },
-    add: () => { tabs.splice(1, 0, { id: 6, pinned: false, groupId: -1, url: 'https://new.test/', title: '新标签' }); reindex(); } };
+    add: (url = 'https://new.test/') => { tabs.splice(1, 0, { id: 6, pinned: false, groupId: -1, url, title: '新标签' }); reindex(); } };
 }
 const plan = (assignments, existingGroupId = null) => ({ groups: [{ key: existingGroupId === null ? 'new:0' : `existing:${existingGroupId}`, existingGroupId, title: '新组', color: 'green' }], assignments });
 
@@ -198,4 +198,63 @@ test('排序前手动分组冲突会阻止移动，全部候选失效不创建�
   f.close(4); f.close(5);
   await assert.rejects(applyPlan(f.api, before, 'sort-domain', sortPlan()), /没有可应用/);
   assert.deepEqual(f.store, {});
+});
+
+for (const mode of ['new', 'merge', 'rebuild']) test(`${mode} 分组后自动排列所有组并将未分类和排除项统一置后`, async () => {
+  const f = fakeBrowser();
+  f.add();
+  // 模拟未分类标签散落在已有组之前。
+  await f.api.tabs.move(5, { index: 1 });
+  const before = await takeSnapshot(f.api, 7);
+  const p = mode === 'merge' ? plan({ 4: 'existing:10', 5: 'none', 6: 'keep' }, 10)
+    : mode === 'new' ? plan({ 4: 'new:0', 5: 'none', 6: 'keep' })
+    : plan({ 2: 'new:0', 3: 'none', 4: 'new:0', 5: 'none', 6: 'keep' });
+  await applyPlan(f.api, before, mode, p);
+  const after = await takeSnapshot(f.api, 7);
+  const ungroupedStart = after.tabs.findIndex(t => !t.pinned && t.groupId === -1);
+  assert.ok(after.tabs.slice(1, ungroupedStart).every(t => t.groupId !== -1));
+  assert.deepEqual(after.tabs.slice(ungroupedStart).map(t => t.id), mode === 'rebuild' ? [5, 6, 3] : [5, 6]);
+  assert.equal(after.tabs[0].id, 1);
+  assert.equal(after.tabs.find(t => t.id === 6).groupId, -1);
+  await undoLast(f.api, 7);
+  assert.deepEqual((await takeSnapshot(f.api, 7)).tabs.map(t => t.id), before.tabs.map(t => t.id));
+});
+
+test('多个新组依预览顺序排列，组内顺序不受数字 ID 或预览后手动移动影响', async () => {
+  const f = fakeBrowser(); f.add();
+  await f.api.tabs.move(5, { index: 1 });
+  const before = await takeSnapshot(f.api, 7);
+  const p = { groups: [
+    { key: 'new:first', existingGroupId: null, title: '第一组', color: 'blue' },
+    { key: 'new:last', existingGroupId: null, title: '第二组', color: 'green' }
+  ], assignments: { 4: 'new:first', 5: 'new:last', 6: 'new:first' } };
+  await f.api.tabs.move(4, { index: 1 });
+  const atApply = await takeSnapshot(f.api, 7);
+  await applyPlan(f.api, before, 'new', p);
+  const after = await takeSnapshot(f.api, 7);
+  assert.deepEqual(after.tabs.map(t => t.id), [1, 2, 3, 6, 4, 5]);
+  assert.deepEqual(after.tabs.filter(t => t.groupId === after.groups.find(g => g.title === '第一组').id).map(t => t.id), [6, 4]);
+  await undoLast(f.api, 7);
+  assert.deepEqual(await takeSnapshot(f.api, 7), atApply);
+});
+
+test('分组后自动排序的移动失败仍回滚分组及整窗顺序', async () => {
+  const f = fakeBrowser(); f.add();
+  const before = await takeSnapshot(f.api, 7);
+  // 新组成员已排好后，在未分类标签收尾时失败。
+  f.failMove(1);
+  await assert.rejects(applyPlan(f.api, before, 'new', plan({ 4: 'new:0', 5: 'none', 6: 'keep' })), /已恢复操作前/);
+  assert.deepEqual(await takeSnapshot(f.api, 7), before);
+  assert.deepEqual(f.store, {});
+});
+
+test('不参与分类的内部页面同样移到分组后，撤销恢复其原位置', async () => {
+  const f = fakeBrowser(); f.add('edge://settings/');
+  const before = await takeSnapshot(f.api, 7);
+  await applyPlan(f.api, before, 'new', plan({ 4: 'new:0', 5: 'none' }));
+  const after = await takeSnapshot(f.api, 7);
+  assert.deepEqual(after.tabs.map(t => t.id), [1, 2, 3, 4, 6, 5]);
+  assert.equal(after.tabs.find(t => t.id === 6).groupId, -1);
+  await undoLast(f.api, 7);
+  assert.deepEqual(await takeSnapshot(f.api, 7), before);
 });

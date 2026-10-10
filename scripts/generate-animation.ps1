@@ -1,7 +1,13 @@
+param([switch]$DeepSeek)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $sourcePath = Join-Path $projectRoot 'assets\animation\tagmaid-sorting-source.png'
+$outputName = 'tagmaid-sorting-strip.png'
+if ($DeepSeek) {
+    $sourcePath = Join-Path $projectRoot 'assets\animation\tagmaid-deepseek-sorting-v1.png'
+    $outputName = 'tagmaid-deepseek-sorting-strip.png'
+}
 $outputDirectory = Join-Path $projectRoot 'extension\images'
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 $sourceImage = [System.Drawing.Bitmap]::new($sourcePath)
@@ -23,7 +29,7 @@ try {
             $sourceY = [int][Math]::Floor($frame / 3) * $cellHeight
             $graphics.DrawImage($sourceImage, [System.Drawing.Rectangle]::new(($frame * $frameSize), 0, $frameSize, $frameSize), $sourceX, $sourceY, $cellWidth, $cellHeight, [System.Drawing.GraphicsUnit]::Pixel)
         }
-        $strip.Save((Join-Path $outputDirectory 'tagmaid-sorting-strip.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+        $strip.Save((Join-Path $outputDirectory $outputName), [System.Drawing.Imaging.ImageFormat]::Png)
     } finally {
         $graphics.Dispose()
         $strip.Dispose()

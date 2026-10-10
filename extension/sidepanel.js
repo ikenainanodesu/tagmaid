@@ -1,5 +1,6 @@
 import { apiEndpoint, candidates, COLORS, MODES, isSortMode, payloadFor, cleanUrl, reconcilePreview } from './core.js';
 import { requestPlan } from './api.js';
+import { appearanceForEndpoint } from './appearance.js';
 import { resolveLanguage, translate, msg, errorMessage } from './i18n.js';
 
 let language = resolveLanguage(null, chrome.i18n.getUILanguage());
@@ -16,6 +17,14 @@ let busy = false;
 let syncVersion = 0, syncTimer, syncPending = false, previewConflict = '';
 let settings = { endpoint: '', model: '', apiKey: '', rememberKey: false };
 const mode = () => document.querySelector('input[name="mode"]:checked').value;
+
+function applyAppearance(endpoint) {
+  const appearance = appearanceForEndpoint(endpoint);
+  document.documentElement.dataset.appearance = appearance.id;
+  document.querySelector('.brand .mark').src = appearance.logo;
+  document.querySelector('.sorting-sprite img').src = appearance.animation;
+  document.querySelector('link[rel="icon"]').href = appearance.favicon;
+}
 
 function localizePage() {
   document.documentElement.lang = language;
@@ -94,7 +103,7 @@ function showSnapshot() {
   const payload = payloadFor(snapshot, mode(), language);
   $('candidate-count').textContent = payload.tabs.length;
   $('group-count').textContent = t('{count} 个已有组', { count: snapshot.groups.length });
-  $('scope-note').textContent = t('窗口共 {count} 个标签 · 固定标签与内部页面不参与整理。', { count: snapshot.tabs.length });
+  $('scope-note').textContent = t(sorting ? '窗口共 {count} 个标签 · 固定标签与内部页面不参与整理。' : '窗口共 {count} 个标签 · 固定标签不动，内部页面不分类；应用后未分组标签统一移到组后。', { count: snapshot.tabs.length });
   $('payload-count').textContent = t('· {count} 个标签', { count: payload.tabs.length });
   $('payload-preview').textContent = JSON.stringify(payload, null, 2);
   updateControls();
@@ -111,7 +120,7 @@ function previewNotices() {
   const added = snapshot.tabs.filter(tab => !originalIds.has(tab.id)).length;
   const messages = [];
   if (skipped) messages.push(msg('已跳过 {count} 个已关闭、移出窗口或固定的标签。', { count: skipped }));
-  if (added) messages.push(msg('{count} 个新增标签未纳入本次整理，保持原样。', { count: added }));
+  if (added) messages.push(msg(isSortMode(previewMode) ? '{count} 个新增标签未纳入本次整理，保持原样。' : '{count} 个新增标签不参与分类；未分组的会随排序移到组后。', { count: added }));
   if (!result.included) messages.push(msg('没有可应用的标签，请重新生成预览或调整排除项。'));
   if (previewConflict) messages.push(msg(previewConflict));
   return messages;
@@ -165,7 +174,7 @@ function allTargets() {
     const key = `existing:${group.id}`;
     if (!targets.some(t => t.key === key)) targets.push({ key, label: `${t('已有组')} · ${group.title || t('未命名分组')}` });
   }
-  return [...targets, { key: 'none', label: t('保持未分组') }, { key: 'keep', label: t('排除 · 保持原样') }];
+  return [...targets, { key: 'none', label: t('保持未分组') }, { key: 'keep', label: t('排除 · 保留分组归属') }];
 }
 function updateTargetLabels() {
   const names = new Map(allTargets().map(t => [t.key, t.label]));
@@ -178,12 +187,12 @@ function renderPreview(focusTabId) {
   $('add-group').hidden = sorting;
   $('preview-help').textContent = sorting
     ? t('按下方顺序将参与排序的标签移到所有组后面，不创建分组。可排除标签；已有组与排除项的相对顺序保留，绝对位置可能随其他标签移动而变化。')
-    : t('可修改新组名称和颜色，调整标签去向。“排除”将保留该标签原样。');
+    : t('应用后自动排列：已有组保持相对顺序，新组及组内新成员按预览顺序排列，未分组标签全部置后。可编辑名称、颜色和去向；排除项保留归属但位置可能改变。');
   const container = $('preview-groups'); container.replaceChildren();
   const available = candidates(previewSnapshot, previewMode);
   const byId = new Map(available.map(tab => [tab.id, tab]));
   const tabs = sorting ? plan.orderedTabIds.map(id => byId.get(id)) : available;
-  const destinations = [...plan.groups, { key: 'none', title: sorting ? t('排序结果 · 从左到右') : t('保持未分组'), color: 'grey' }, { key: 'keep', title: t('排除 · 保持原样'), color: 'grey' }];
+  const destinations = [...plan.groups, { key: 'none', title: sorting ? t('排序结果 · 从左到右') : t('保持未分组'), color: 'grey' }, { key: 'keep', title: t(sorting ? '排除 · 保持原样' : '排除 · 保留分组归属'), color: 'grey' }];
   for (const group of destinations) {
     const members = tabs.filter(t => plan.assignments[t.id] === group.key);
     if (!members.length && ['none', 'keep'].includes(group.key)) continue;
@@ -253,6 +262,7 @@ $('settings-form').addEventListener('submit', async event => {
     await chrome.storage.session.set({ apiKey: next.rememberKey ? '' : next.apiKey });
     const oldOrigin = settings.endpoint ? apiEndpoint(settings.endpoint).origin : null;
     settings = next;
+    applyAppearance(settings.endpoint);
     if (oldOrigin && oldOrigin !== endpoint.origin) await chrome.permissions.remove({ origins: [oldOrigin] });
     updateConnection(); showSettings(false); status(msg('设置已保存。生成预览时才会发送标签信息。'));
   } catch (error) { status(errorMessage(error), true); }
@@ -332,6 +342,7 @@ async function init() {
   language = resolveLanguage(local.language, chrome.i18n.getUILanguage());
   localizePage();
   settings = { ...settings, ...local.settings };
+  applyAppearance(settings.endpoint);
   if (!settings.rememberKey) settings.apiKey = session.apiKey || '';
   $('endpoint').value = settings.endpoint; $('model').value = settings.model;
   $('api-key').value = settings.apiKey; $('remember-key').checked = settings.rememberKey;
@@ -340,6 +351,7 @@ async function init() {
   await refresh();
   $('language').disabled = false;
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.settings) applyAppearance(changes.settings.newValue?.endpoint);
     if (area !== 'local' || !changes.language) return;
     const next = resolveLanguage(changes.language.newValue, chrome.i18n.getUILanguage());
     if (next !== language) { language = next; localizePage(); }

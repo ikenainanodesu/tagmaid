@@ -1,18 +1,26 @@
 import { readFile, access, readdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { APPEARANCES } from '../extension/appearance.js';
 const manifest = JSON.parse(await readFile('extension/manifest.json', 'utf8'));
 assert.equal(manifest.manifest_version, 3);
 assert.ok(!manifest.host_permissions?.length);
 assert.ok(!manifest.action.default_popup);
 for (const file of [manifest.background.service_worker, manifest.side_panel.default_path, 'styles.css', 'sidepanel.js']) await access(`extension/${file}`);
-for (const icons of [manifest.icons, manifest.action.default_icon]) {
+for (const icons of [manifest.icons, manifest.action.default_icon, ...Object.values(APPEARANCES).map(appearance => appearance.icons)]) {
   for (const [size, file] of Object.entries(icons ?? {})) {
     const png = await readFile(`extension/${file}`);
     assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${file} 必须是 PNG`);
     assert.equal(png.readUInt32BE(16), Number(size), `${file} 宽度不符`);
     assert.equal(png.readUInt32BE(20), Number(size), `${file} 高度不符`);
   }
+}
+for (const appearance of Object.values(APPEARANCES)) {
+  for (const file of [appearance.logo, appearance.favicon, appearance.animation]) await access(`extension/${file}`);
+  const strip = await readFile(`extension/${appearance.animation}`);
+  assert.equal(strip.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(strip.readUInt32BE(16), 1152, `${appearance.animation} 宽度不符`);
+  assert.equal(strip.readUInt32BE(20), 192, `${appearance.animation} 高度不符`);
 }
 for (const file of await readdir('extension')) if (file.endsWith('.js')) execFileSync(process.execPath, ['--check', `extension/${file}`]);
 const html = await readFile('extension/sidepanel.html', 'utf8');

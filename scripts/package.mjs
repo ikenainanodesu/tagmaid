@@ -13,6 +13,7 @@ for (const path of [dist, target]) {
 await rm(target, { recursive: true, force: true });
 await mkdir(target, { recursive: true });
 await cp(resolve(root, 'extension'), target, { recursive: true });
+await cp(resolve(root, 'assets/screenshots'), resolve(target, 'assets/screenshots'), { recursive: true });
 for (const file of ['README.md', 'README.zh-CN.md', 'README.ja.md']) {
   // 发布包中 manifest 位于根目录，修正随包文档的资源相对路径。
   const text = await readFile(resolve(root, file), 'utf8');

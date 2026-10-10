@@ -2,20 +2,30 @@
 
 <p align="center"><img src="extension/icons/icon-128.png" width="128" height="128" alt="TagMaid 像素女仆标志"></p>
 
-**帮你整理浏览器标签的小女仆。** 在 Microsoft Edge 侧栏中预览、编辑并确认 AI 分组或排序。连接自己的 OpenAI 兼容 API，也可以完全在本机按域名排序。
+**帮你整理浏览器标签的小女仆。** 在 Google Chrome 或 Microsoft Edge 侧栏中预览、编辑并确认 AI 分组或排序。连接自己的 OpenAI 兼容 API，也可以完全在本机按域名排序。
 
 [English](README.md) · **简体中文** · [日本語](README.ja.md)
 
+## 插件截图
+
+以下为真实 Chrome 侧栏截图，使用本地演示数据，API 密钥为空。截图与本文使用相同语言；蓝色外观展示 DeepSeek 彩蛋，预览由本地模拟 API 生成。
+
+| 默认外观 | DeepSeek 彩蛋 |
+| --- | --- |
+| <img src="assets/screenshots/zh-CN-default.png" width="340" alt="默认外观"> | <img src="assets/screenshots/zh-CN-deepseek.png" width="340" alt="DeepSeek 彩蛋"> |
+
 ## 安装与使用
 
-1. 从 [Releases](https://github.com/ikenainanodesu/tagmaid/releases) 下载并解压 `TagMaid-v1.0.1.zip`，或克隆本仓库。
-2. 打开 `edge://extensions`，开启「开发人员模式」，点击「加载解压缩的扩展」。
+1. 从 [Releases](https://github.com/ikenainanodesu/tagmaid/releases) 下载并解压 `TagMaid-v1.1.0.zip`，或克隆本仓库。
+2. Chrome 打开 `chrome://extensions`，Edge 打开 `edge://extensions`，开启「开发者模式／开发人员模式」，点击「加载已解压的扩展程序／加载解压缩的扩展」。
 3. 选择解压后包含 `manifest.json` 的 `TagMaid` 文件夹；使用源码时选择 `extension`。
-4. 点击工具栏图标或按 **Alt+Shift+Y** 打开侧栏。快捷键可在 `edge://extensions/shortcuts` 修改。
+4. 从浏览器扩展菜单固定 TagMaid 后点击工具栏图标，或按 **Alt+Shift+Y** 打开侧栏。快捷键可在 Chrome 的 `chrome://extensions/shortcuts` 或 Edge 的 `edge://extensions/shortcuts` 修改。
 5. 使用 AI 时填写 API 地址、模型名称和密钥，保存并授权 API 站点。例如 `https://api.example.com/v1`，也可填写完整 `/chat/completions` 地址。本地免密服务可留空密钥。
 6. 选择模式，可附加要求，检查发送数据后生成预览。编辑新组名称、颜色和标签去向，或排除标签，最后确认应用。
 
 使用扩展不需要 Node.js 或构建。更新文件后，在扩展管理页点击「重新加载」并重新打开侧栏。本版本以解压扩展方式安装，未上架浏览器商店。
+
+请使用保持更新的桌面 Chrome 或 Edge。两者加载同一个扩展目录，五种模式与三语界面一致；设置、API 密钥及撤销记录分别保存在各自浏览器配置中。浏览器验证在 Windows 上完成，macOS、Linux 和移动端尚未验证。
 
 ## 五种模式
 
@@ -27,11 +37,19 @@
 | AI 排序 · 不分组 | 按主题或任务排列未分组标签，不创建分组。 |
 | 域名排序 · 不分组 | 本地按完整域名排序，同域名保持原顺序，无需 API。 |
 
-只操作侧栏所在窗口。固定标签和非 HTTP(S) 页面不参与。排序将参与标签移至窗口末尾、已有组之后；已有组成员、名称、颜色、折叠状态及相对顺序保留。排除项和新增标签不参与，但绝对位置可能随其他标签移动而变化。
+只操作侧栏所在窗口。固定标签保持不动，非 HTTP(S) 页面不参与分类。
+
+前三种分组模式应用后会自动排列整个窗口：已有组保持相对顺序，新组按预览顺序排列，组内新成员按预览顺序排列；全部未分组标签保持原相对顺序并集中到所有组之后。内部页面、排除项和预览后新增标签保留分组归属，但会参与整体位置调整。撤销同时恢复分组和应用前的顺序。
+
+两种纯排序模式只将参与排序的标签移至窗口末尾、已有组之后；已有组成员、名称、颜色、折叠状态及相对顺序保留。固定标签、非 HTTP(S) 页面、排除项和新增标签不参与纯排序，但绝对位置可能随其他标签移动而变化。
 
 ## 界面语言
 
 支持 **English、简体中文、日本語**。首次跟随浏览器语言，其他语言回退英文；手动选择仅保存在本机。切换语言保留预览和编辑，不重新请求 API。AI 新组名默认使用开始生成时的语言，附加要求明确指定其他语言时优先遵从。网页标题、已有或已编辑的组名不翻译。浏览器管理的扩展文案另行跟随浏览器语言。
+
+## DeepSeek 彩蛋
+
+保存 `api.deepseek.com` 官方 HTTPS 接口配置后，会解锁蓝色鲸鱼娘彩蛋：侧栏 Logo、等待动画和工具栏图标一同切换。换成其他接口恢复绿色原版；本地域名排序沿用当前配置的皮肤。扩展管理页的安装图标不变。
 
 ## 隐私与安全
 
@@ -63,11 +81,13 @@ npm run package
 
 测试使用模拟浏览器 API 验证网址清理、响应校验、五种模式、预览变化、回滚和撤销。静态检查验证清单、资源、脚本语法和界面引用。打包会替换生成目录 `dist/TagMaid`，产出干净的扩展及三语 README。
 
-Windows 安装 Edge 后，可运行 `npm run test:language-browser`，在独立配置中使用本地模拟 API 测试实际侧栏。可用 `EDGE_PATH` 指定 Edge 程序。产物保存在被忽略的 `test-results/`。这些检查不代表真实供应商分类质量、数据留存政策或原生权限弹窗交互已验证。
+Windows 安装当前版本的浏览器后，分别运行 `npm run test:chrome` 和 `npm run test:edge`。原命令 `npm run test:language-browser` 仍运行 Edge 测试。可用 `CHROME_PATH` 或 `EDGE_PATH` 指定程序路径。每次测试启动独立的无界面浏览器配置，通过浏览器扩展调试接口加载临时扩展副本并触发工具栏入口，确认真实 `SIDE_PANEL` 上下文，使用本地模拟 API 验证五种模式、应用后的标签状态与撤销、三语界面及 300/382px 布局。缺少这些调试命令的旧版浏览器无法运行此测试，这与手动安装兼容性是不同的要求。
+
+产物保存在被忽略的 `test-results/language-chrome-*` 和 `test-results/language-edge-*`。仅测试副本预先授予本地模拟 API 权限，安装包仍使用可选站点权限。这些检查不代表真实供应商分类质量、数据留存政策、原生权限弹窗交互或实际鼠标点击工具栏／键盘快捷键已验证。
 
 ## 许可证
 
-版权所有 © 2026 ikenainanodesu。TagMaid 的原创代码、文档、Logo、图标和动画素材统一采用 **GNU GPL 第 3 版，仅限该版本**（`GPL-3.0-only`）。完整条款见 [LICENSE](LICENSE)，项目授权声明见 [NOTICE](NOTICE)。第三方组件保留各自许可证。安装包包含这两个文件，[v1.0.1 对应源码](https://github.com/ikenainanodesu/tagmaid/tree/v1.0.1) 在本仓库提供。
+版权所有 © 2026 ikenainanodesu。TagMaid 的原创代码、文档、Logo、图标和动画素材统一采用 **GNU GPL 第 3 版，仅限该版本**（`GPL-3.0-only`）。完整条款见 [LICENSE](LICENSE)，项目授权声明见 [NOTICE](NOTICE)。第三方组件保留各自许可证。安装包包含这两个文件，[v1.1.0 对应源码](https://github.com/ikenainanodesu/tagmaid/tree/v1.1.0) 在本仓库提供。
 
 ## 反馈
 

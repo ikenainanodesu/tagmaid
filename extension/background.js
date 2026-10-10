@@ -1,7 +1,22 @@
 import { applyPlan, takeSnapshot, undoLast, undoKey } from './engine.js';
+import { appearanceForEndpoint } from './appearance.js';
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }).catch(() => {});
+
+// Worker 启动和配置变化均从持久存储恢复；串行更新避免快速切换后图标回退。
+let toolbarUpdate = Promise.resolve();
+function refreshToolbarAppearance() {
+  toolbarUpdate = toolbarUpdate.catch(() => {}).then(async () => {
+    const { settings } = await chrome.storage.local.get('settings');
+    await chrome.action.setIcon({ path: appearanceForEndpoint(settings?.endpoint).icons });
+  });
+  toolbarUpdate.catch(error => console.warn('Toolbar icon update failed', error));
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.settings) refreshToolbarAppearance();
+});
+refreshToolbarAppearance();
 
 // 队列只负责当前 worker 的并发；恢复记录保存在 session 中，跨 worker 重启有效。
 const queues = new Map();

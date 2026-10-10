@@ -1,5 +1,9 @@
 // 中文文案作为稳定键；参数单独插值，不翻译网页标题、用户输入或已有组名。
 export const translations = {
+  '窗口共 {count} 个标签 · 固定标签不动，内部页面不分类；应用后未分组标签统一移到组后。': ['{count} tabs · Pinned tabs stay put; internal pages are not classified. Applying moves all ungrouped tabs after the groups.', 'タブ {count} 個 · 固定タブは移動せず、内部ページは分類しません。適用すると未分類タブをすべてグループの後ろへ移動します。'],
+  '{count} 个新增标签不参与分类；未分组的会随排序移到组后。': ['{count} new tabs will not be classified; any that are ungrouped will move after the groups.', '新しいタブ {count} 個は分類しません。未分類のものはグループの後ろへ移動します。'],
+  '排除 · 保留分组归属': ['Exclude · Keep group membership', '除外 · 所属グループを維持'],
+  '应用后自动排列：已有组保持相对顺序，新组及组内新成员按预览顺序排列，未分组标签全部置后。可编辑名称、颜色和去向；排除项保留归属但位置可能改变。': ['Applying automatically arranges tabs: existing groups keep their relative order, new groups and incoming members follow the preview, and all ungrouped tabs go last. Edit names, colors, and destinations; excluded tabs keep their membership but may move.', '適用時に自動整列します。既存グループの相対順序を維持し、新規グループと追加メンバーはプレビュー順、未分類タブはすべて末尾に配置します。名前・色・移動先は編集可能です。除外したタブの所属は維持しますが、位置は変わる場合があります。'],
   'TagMaid · AI 标签整理': ['TagMaid · AI Tab Organizer', 'TagMaid · AI タブ整理'],
   '让标签，各归其位。': ['A place for every tab.', 'タブを、あるべき場所へ。'],
   '语言': ['Language', '言語'],

@@ -1,7 +1,13 @@
+param([switch]$DeepSeek)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $sourcePath = Join-Path $projectRoot 'assets\logo\tagmaid-pixel-v1.png'
+$prefix = 'icon-'
+if ($DeepSeek) {
+    $sourcePath = Join-Path $projectRoot 'assets\logo\tagmaid-deepseek-v1.png'
+    $prefix = 'deepseek-'
+}
 $outputDirectory = Join-Path $projectRoot 'extension\icons'
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 $sourceImage = [System.Drawing.Bitmap]::new($sourcePath)
@@ -15,7 +21,7 @@ try {
             $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
             $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
             $graphics.DrawImage($sourceImage, [System.Drawing.Rectangle]::new(0, 0, $size, $size), 0, 0, $sourceImage.Width, $sourceImage.Height, [System.Drawing.GraphicsUnit]::Pixel)
-            $icon.Save((Join-Path $outputDirectory "icon-$size.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+            $icon.Save((Join-Path $outputDirectory "$prefix$size.png"), [System.Drawing.Imaging.ImageFormat]::Png)
         } finally {
             $graphics.Dispose()
             $icon.Dispose()

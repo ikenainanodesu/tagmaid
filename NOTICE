@@ -1,4 +1,4 @@
-TagMaid — AI tab grouping and sorting for the Edge sidebar
+TagMaid — AI tab grouping and sorting for Chrome and Edge sidebars
 Copyright (C) 2026 ikenainanodesu
 SPDX-License-Identifier: GPL-3.0-only
 
@@ -19,4 +19,4 @@ the end of that standard license text does not change this project's
 explicit GPL-3.0-only choice.
 
 Project and source: https://github.com/ikenainanodesu/tagmaid
-Source for this release: https://github.com/ikenainanodesu/tagmaid/tree/v1.0.1
+Source for this release: https://github.com/ikenainanodesu/tagmaid/tree/v1.1.0

@@ -11,6 +11,35 @@ export async function takeSnapshot(api, windowId) {
 
 export const undoKey = windowId => `undo:${windowId}`;
 
+// 分组完成后按预览排列新成员，并把整组移到固定标签后；未分组标签统一收尾。
+async function arrangeGroupedTabs(api, before, plannedGroups) {
+  const current = await takeSnapshot(api, before.windowId);
+  const liveGroups = new Set(current.groups.map(group => group.id));
+  const groupIds = [...new Set([
+    ...before.tabs.map(tab => tab.groupId),
+    ...plannedGroups.map(group => group.id),
+    ...current.tabs.map(tab => tab.groupId)
+  ])].filter(id => liveGroups.has(id));
+  for (const group of plannedGroups) {
+    const members = current.tabs.filter(tab => tab.groupId === group.id);
+    const incoming = new Set(group.tabIds);
+    const ordered = [...members.filter(tab => !incoming.has(tab.id)).map(tab => tab.id), ...group.tabIds];
+    // 仅在组内移动，保留已有成员的相对顺序；新成员依照预览追加。
+    for (let offset = 0; offset < ordered.length; offset++) {
+      await api.tabs.move(ordered[offset], { index: members[0].index + offset });
+    }
+  }
+  let index = current.tabs.filter(tab => tab.pinned).length;
+  for (const id of groupIds) {
+    await api.tabGroups.move(id, { index });
+    index += current.tabs.filter(tab => tab.groupId === id).length;
+  }
+  const originalOrder = new Map(before.tabs.map((tab, index) => [tab.id, index]));
+  const ungrouped = current.tabs.filter(tab => !tab.pinned && tab.groupId === -1)
+    .sort((a, b) => (originalOrder.get(a.id) ?? Infinity) - (originalOrder.get(b.id) ?? Infinity));
+  for (const tab of ungrouped) await api.tabs.move(tab.id, { index: -1 });
+}
+
 export async function applyPlan(api, snapshot, mode, rawPlan) {
   const validated = validatePlan(rawPlan, snapshot, mode);
   const current = await takeSnapshot(api, snapshot.windowId);
@@ -34,20 +63,24 @@ export async function applyPlan(api, snapshot, mode, rawPlan) {
         if (plan.assignments[id] !== 'keep') await api.tabs.move(id, { index: -1 });
       }
     } else {
+      const plannedGroups = [];
       const toUngroup = snapshot.tabs.filter(t => managedIds.includes(t.id) && t.groupId !== -1).map(t => t.id);
       if (toUngroup.length) await api.tabs.ungroup(toUngroup);
       for (const group of plan.groups) {
-        const tabIds = managedIds.filter(id => plan.assignments[id] === group.key);
+        const tabIds = reconciled.snapshot.tabs.filter(tab => plan.assignments[tab.id] === group.key).map(tab => tab.id);
         if (!tabIds.length) continue;
         if (group.existingGroupId !== null) {
           await api.tabs.group({ tabIds, groupId: group.existingGroupId });
+          plannedGroups.push({ id: group.existingGroupId, tabIds });
         } else {
           const groupId = await api.tabs.group({ tabIds, createProperties: { windowId: snapshot.windowId } });
           record.createdGroupIds.push(groupId);
           await api.storage.session.set({ [key]: record });
           await api.tabGroups.update(groupId, { title: group.title, color: group.color, collapsed: false });
+          plannedGroups.push({ id: groupId, tabIds });
         }
       }
+      await arrangeGroupedTabs(api, snapshot, plannedGroups);
     }
     record.status = 'ready';
     await api.storage.session.set({ [key]: record });
