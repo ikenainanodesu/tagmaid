@@ -1,6 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyPlan, undoLast, takeSnapshot, undoKey } from '../extension/engine.js';
+import { applyPlan, toggleAllGroups, undoLast, takeSnapshot, undoKey } from '../extension/engine.js';
+
+test('独立按钮将混合状态统一折叠，再全部展开，仅更新当前窗口的折叠属性', async () => {
+  const groups = [
+    { id: 1, windowId: 7, collapsed: false, title: 'A', color: 'blue' },
+    { id: 2, windowId: 7, collapsed: true, title: 'B', color: 'green' },
+    { id: 3, windowId: 8, collapsed: false, title: 'C', color: 'red' }
+  ];
+  const before = structuredClone(groups);
+  const api = { tabGroups: {
+    query: async ({ windowId }) => structuredClone(groups.filter(group => group.windowId === windowId)),
+    update: async (id, props) => {
+      assert.deepEqual(Object.keys(props), ['collapsed']);
+      Object.assign(groups.find(group => group.id === id), props);
+    }
+  } };
+  assert.deepEqual(await toggleAllGroups(api, 7), { collapsed: true, count: 2 });
+  assert.deepEqual(groups, before.map(group => group.windowId === 7 ? { ...group, collapsed: true } : group));
+  assert.deepEqual(await toggleAllGroups(api, 7), { collapsed: false, count: 2 });
+  assert.deepEqual(groups, before.map(group => group.windowId === 7 ? { ...group, collapsed: false } : group));
+  assert.deepEqual(await toggleAllGroups(api, 9), { collapsed: false, count: 0 });
+});
 
 function fakeBrowser() {
   let tabs = [
@@ -65,7 +86,7 @@ for (const mode of ['new', 'merge', 'rebuild']) test(`${mode} 应用与撤销恢
   assert.equal(after.tabs.find(t => t.id === 1).groupId, -1);
   if (mode !== 'rebuild') {
     assert.equal(after.tabs.find(t => t.id === 2).groupId, 10);
-    assert.deepEqual(after.groups.find(g => g.id === 10), before.groups[0]);
+    assert.deepEqual(after.groups.find(g => g.id === 10), { ...before.groups[0], collapsed: false });
   }
   await undoLast(api, 7); after = await takeSnapshot(api, 7);
   assert.deepEqual(after.tabs.map(t => t.id), before.tabs.map(t => t.id));
@@ -148,14 +169,50 @@ test('标签被手动改组或目标组消失仍在修改前拒绝', async () =>
 });
 
 const sortPlan = () => ({ groups: [], assignments: { 4: 'none', 5: 'none' }, orderedTabIds: [5, 4] });
-for (const mode of ['sort-ai', 'sort-domain']) test(`${mode} 将未分组标签按预览排到组后，保留组属性且可撤销`, async () => {
+for (const mode of ['new', 'merge', 'rebuild', 'sort-ai', 'sort-domain']) {
+  for (const collapsed of [true, false]) test(`${mode} 可统一${collapsed ? '折叠' : '展开'}所有组并撤销恢复`, async () => {
+    const f = fakeBrowser();
+    await f.api.tabGroups.update(10, { collapsed: !collapsed });
+    const before = await takeSnapshot(f.api, 7);
+    const p = mode.startsWith('sort-') ? sortPlan()
+      : mode === 'merge' ? plan({ 4: 'existing:10', 5: 'none' }, 10)
+      : mode === 'new' ? plan({ 4: 'new:0', 5: 'none' })
+      : plan({ 2: 'new:0', 3: 'keep', 4: 'new:0', 5: 'none' });
+    await applyPlan(f.api, before, mode, p, collapsed);
+    const after = await takeSnapshot(f.api, 7);
+    assert.ok(after.groups.length);
+    assert.ok(after.groups.every(group => group.collapsed === collapsed));
+    await undoLast(f.api, 7);
+    assert.deepEqual(await takeSnapshot(f.api, 7), before);
+  });
+}
+
+test('部分分组展开后失败，回滚恢复未参与分类的已有组状态', async () => {
+  const f = fakeBrowser();
+  const before = await takeSnapshot(f.api, 7);
+  const update = f.api.tabGroups.update;
+  let changedExisting = false;
+  f.api.tabGroups.update = async (id, props) => {
+    if (changedExisting && id !== 10 && Object.keys(props).length === 1) {
+      changedExisting = false;
+      throw new Error('模拟后续分组展开失败');
+    }
+    await update(id, props);
+    if (id === 10 && props.collapsed === false) changedExisting = true;
+  };
+  await assert.rejects(applyPlan(f.api, before, 'new', plan({ 4: 'new:0', 5: 'none' }), false), /已恢复操作前/);
+  assert.deepEqual(await takeSnapshot(f.api, 7), before);
+  assert.deepEqual(f.store, {});
+});
+
+for (const mode of ['sort-ai', 'sort-domain']) test(`${mode} 将未分组标签按预览排到组后，默认展开所有组且可撤销`, async () => {
   const f = fakeBrowser();
   await f.api.tabs.move(4, { index: 1 });
   const before = await takeSnapshot(f.api, 7);
   await applyPlan(f.api, before, mode, sortPlan());
   const after = await takeSnapshot(f.api, 7);
   assert.deepEqual(after.tabs.map(t => t.id), [1, 2, 3, 5, 4]);
-  assert.deepEqual(after.groups, before.groups);
+  assert.deepEqual(after.groups, before.groups.map(group => ({ ...group, collapsed: false })));
   assert.deepEqual(after.tabs.map(t => t.groupId), [ -1, 10, 10, -1, -1 ]);
   assert.deepEqual(f.calls, []);
   await undoLast(f.api, 7);

@@ -31,15 +31,27 @@ Use an up-to-date desktop Chrome or Edge. Both browsers load the same extension 
 | --- | --- |
 | Reorganize all | Regroup eligible tabs, including those already in groups. |
 | New groups only (default) | Preserve existing groups; organize only ungrouped tabs. |
-| Allow existing groups | Let ungrouped tabs join existing or new groups; preserve existing group properties. |
+| Allow existing groups | Let ungrouped tabs join existing or new groups; preserve existing group names and colors. |
 | AI sort · no grouping | Sort ungrouped tabs by topic or task without creating groups. |
 | Domain sort · no grouping | Sort locally by full hostname, retaining the original order within each hostname; no API needed. |
 
-Only the sidebar's window is affected. Pinned tabs stay in place; non-HTTP(S) pages are not classified.
+These five organization modes affect only the sidebar's window. Pinned tabs stay in place; non-HTTP(S) pages are not classified.
 
 Applying any of the three grouping modes automatically arranges the whole window: existing groups keep their relative order, new groups follow preview order, and incoming members follow their preview order within each group. All ungrouped tabs retain their relative order and move after all groups. Internal pages, excluded tabs, and tabs opened after the preview retain their group membership but take part in this layout adjustment. Undo restores both groups and the order from immediately before applying.
 
-The two sorting-only modes move only participating tabs to the window's end, after existing groups. Existing groups retain their members, names, colors, collapsed state, and relative order. Pinned, non-HTTP(S), excluded, and newly opened tabs do not participate in sorting-only modes, though positions may shift when other tabs move.
+The two sorting-only modes move only participating tabs to the window's end, after existing groups. Existing groups retain their members, names, colors, and relative order. Pinned, non-HTTP(S), excluded, and newly opened tabs do not participate in sorting-only modes, though positions may shift when other tabs move.
+
+Under “How to organize”, choose “Expand all groups” (default) or “Collapse all groups”. The choice is saved locally without API setup and applies to every group in the current window after confirming any of the five modes. Undo restores each group’s previous collapsed state.
+
+A separate “Collapse all groups / Expand all groups” button below the window statistics works immediately without a preview. It collapses all groups if any are expanded, or expands them if all are collapsed. It affects only this window and preserves the post-organization preference and the last organization’s undo record.
+
+## Detect duplicate pages
+
+Click **Detect duplicate pages** to scan HTTP(S) tabs across all non-private normal windows and tab groups. Only identical full URLs match; query strings and `#` fragments remain significant. Detection is entirely local and requires no API.
+
+The separate preview lists URLs, titles, windows, tab positions, and groups. Pinned tabs and the active tab in the focused window are kept by default. Otherwise, one tab is kept, preferring the sidebar's window and then window ID and tab order. Checked tabs will close. You can change every selection, including closing an entire duplicate set; the confirmation button shows the total.
+
+Before closing, every member is rechecked for URL, window, pinned, active, and group changes. Changed or navigating sets are skipped; changing the focused window skips all selected sets. Other valid sets proceed. Results report actual closures, skipped sets, and failures; scan again to continue. Switching between organization and duplicate previews discards the old preview. **Duplicate closures have no in-extension undo.** The existing organization undo does not reopen pages.
 
 ## Languages
 

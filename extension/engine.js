@@ -11,6 +11,15 @@ export async function takeSnapshot(api, windowId) {
 
 export const undoKey = windowId => `undo:${windowId}`;
 
+export async function toggleAllGroups(api, windowId) {
+  const groups = await api.tabGroups.query({ windowId });
+  const collapsed = groups.some(group => !group.collapsed);
+  for (const group of groups) {
+    if (group.collapsed !== collapsed) await api.tabGroups.update(group.id, { collapsed });
+  }
+  return { collapsed, count: groups.length };
+}
+
 // 分组完成后按预览排列新成员，并把整组移到固定标签后；未分组标签统一收尾。
 async function arrangeGroupedTabs(api, before, plannedGroups) {
   const current = await takeSnapshot(api, before.windowId);
@@ -40,7 +49,7 @@ async function arrangeGroupedTabs(api, before, plannedGroups) {
   for (const tab of ungrouped) await api.tabs.move(tab.id, { index: -1 });
 }
 
-export async function applyPlan(api, snapshot, mode, rawPlan) {
+export async function applyPlan(api, snapshot, mode, rawPlan, collapsed = false) {
   const validated = validatePlan(rawPlan, snapshot, mode);
   const current = await takeSnapshot(api, snapshot.windowId);
   const reconciled = reconcilePreview(snapshot, current, mode, validated);
@@ -53,7 +62,7 @@ export async function applyPlan(api, snapshot, mode, rawPlan) {
   const key = undoKey(snapshot.windowId);
   const old = (await api.storage.session.get(key))[key];
   if (old?.status === 'applying' || old?.status === 'restoring' || old?.status === 'recovery') throw new Error('上次操作尚未恢复，请先点击撤销恢复。');
-  const record = { snapshot, managedIds, createdGroupIds: [], restoredGroups: {}, status: 'applying', time: Date.now() };
+  const record = { snapshot, managedIds, createdGroupIds: [], restoredGroups: {}, restoreGroupDisplay: true, status: 'applying', time: Date.now() };
   await api.storage.session.set({ [key]: record });
   try {
     // 先写恢复记录；即使后台中断，下一次打开仍能撤销。
@@ -81,6 +90,10 @@ export async function applyPlan(api, snapshot, mode, rawPlan) {
         }
       }
       await arrangeGroupedTabs(api, snapshot, plannedGroups);
+    }
+    // 所有模式统一处理整窗分组；放在移动之后，避免移动操作再次展开分组。
+    for (const group of await api.tabGroups.query({ windowId: snapshot.windowId })) {
+      await api.tabGroups.update(group.id, { collapsed });
     }
     record.status = 'ready';
     await api.storage.session.set({ [key]: record });
@@ -144,6 +157,15 @@ export async function restoreRecord(api, record) {
     } else {
       await api.tabs.move(tab.id, { index });
       index++;
+    }
+  }
+  if (record.restoreGroupDisplay) {
+    const groups = await api.tabGroups.query({ windowId: snapshot.windowId });
+    for (const original of snapshot.groups) {
+      const groupId = record.restoredGroups[original.id] ?? original.id;
+      if (groups.some(group => group.id === groupId)) {
+        await api.tabGroups.update(groupId, { collapsed: original.collapsed });
+      }
     }
   }
   return { restored: available.length, skipped: managedIds.length - available.length };

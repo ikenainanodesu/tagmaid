@@ -5,7 +5,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $sourcePath = Join-Path $projectRoot 'assets\logo\tagmaid-pixel-v1.png'
 $prefix = 'icon-'
 if ($DeepSeek) {
-    $sourcePath = Join-Path $projectRoot 'assets\logo\tagmaid-deepseek-v1.png'
+    $sourcePath = Join-Path $projectRoot 'assets\logo\tagmaid-deepseek-v2.png'
     $prefix = 'deepseek-'
 }
 $outputDirectory = Join-Path $projectRoot 'extension\icons'

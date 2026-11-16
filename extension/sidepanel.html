@@ -37,6 +37,9 @@
       <h1><span data-i18n="把纷乱的标签，">把纷乱的标签，</span><br><span data-i18n="整理成清晰的思路。">整理成清晰的思路。</span></h1>
       <div class="stats"><strong id="candidate-count">—</strong><span data-i18n="个待整理标签">个待整理标签</span><span class="divider"></span><span id="group-count" data-i18n="— 个已有组">— 个已有组</span><button id="refresh" class="text-button" title="刷新窗口标签" data-i18n-title="刷新窗口标签" data-i18n="刷新">刷新</button></div>
       <p id="scope-note" class="help" data-i18n="固定标签与浏览器内部页面不参与整理。">固定标签与浏览器内部页面不参与整理。</p>
+      <button id="toggle-groups" class="secondary full" type="button" disabled data-i18n="折叠所有组">折叠所有组</button>
+      <button id="detect-duplicates" class="secondary full" type="button" disabled data-i18n="检测重复网页">检测重复网页</button>
+      <p class="help" data-i18n="跨所有非隐私普通窗口 · 完整网址匹配 · 本地检测">跨所有非隐私普通窗口 · 完整网址匹配 · 本地检测</p>
     </section>
 
     <section class="card" aria-labelledby="mode-heading">
@@ -49,6 +52,12 @@
         <label class="mode"><input type="radio" name="mode" value="sort-ai"><span><strong data-i18n="AI 排序 · 不分组">AI 排序 · 不分组</strong><small data-i18n="按主题排列未分组标签，放到所有组后面">按主题排列未分组标签，放到所有组后面</small></span><span class="mode-number">04</span></label>
         <label class="mode"><input type="radio" name="mode" value="sort-domain"><span><strong data-i18n="域名排序 · 不分组">域名排序 · 不分组</strong><small data-i18n="按完整域名升序排列，本地完成，无需 AI">按完整域名升序排列，本地完成，无需 AI</small></span><span class="mode-number">05</span></label>
       </fieldset>
+      <label for="group-display" data-i18n="整理后的标签组">整理后的标签组</label>
+      <select id="group-display" aria-describedby="group-display-help" disabled>
+        <option value="expand" data-i18n="展开所有组">展开所有组</option>
+        <option value="collapse" data-i18n="折叠所有组">折叠所有组</option>
+      </select>
+      <p id="group-display-help" class="help" data-i18n="自动保存。确认应用后，对当前窗口所有组生效，包括纯排序模式；撤销会恢复原状态。">自动保存。确认应用后，对当前窗口所有组生效，包括纯排序模式；撤销会恢复原状态。</p>
       <label id="instruction-label" for="instruction"><span data-i18n="额外要求">额外要求</span> <span class="optional" data-i18n="可选">可选</span></label>
       <textarea id="instruction" rows="2" maxlength="1500" placeholder="例如：按项目分类；把阅读资料放在一起。" data-i18n-placeholder="例如：按项目分类；把阅读资料放在一起。"></textarea>
     </section>
@@ -66,6 +75,14 @@
       <div class="sorting-copy"><strong data-i18n="正在整理思路…">正在整理思路…</strong><p data-i18n="预览准备中，标签保持原样。">预览准备中，标签保持原样。</p></div>
     </div>
     <div id="status" role="status" aria-live="polite" hidden></div>
+
+    <section id="duplicate-preview" hidden aria-labelledby="duplicate-heading">
+      <h2 id="duplicate-heading" data-i18n="重复网页">重复网页</h2>
+      <p class="help" data-i18n="勾选要关闭的页面，可关闭整组。固定页和前台激活页默认保留，可手动改选。此操作不支持插件内撤销。">勾选要关闭的页面，可关闭整组。固定页和前台激活页默认保留，可手动改选。此操作不支持插件内撤销。</p>
+      <div id="duplicate-groups"></div>
+      <div class="apply-bar"><div class="apply-feedback"><span id="duplicate-summary"></span><p id="duplicate-status" role="status" aria-live="polite" hidden></p></div><button id="close-duplicates" class="primary" disabled></button></div>
+      <button id="discard-duplicates" class="text-button full" data-i18n="放弃这份预览">放弃这份预览</button>
+    </section>
 
     <section id="preview" hidden aria-labelledby="preview-heading">
       <div class="section-heading"><div><span class="eyebrow" data-i18n="先预览，再应用">先预览，再应用</span><h2 id="preview-heading" data-i18n="你的分组方案">你的分组方案</h2></div><button id="add-group" class="text-button" data-i18n="＋ 新组">＋ 新组</button></div>

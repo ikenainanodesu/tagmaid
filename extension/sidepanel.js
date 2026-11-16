@@ -14,8 +14,10 @@ const colorNames = { grey: '灰色', blue: '蓝色', red: '红色', yellow: '黄
 const colorHex = { grey: '#909a94', blue: '#6398d5', red: '#d06c64', yellow: '#cfb75d', green: '#6ba785', pink: '#d798b1', purple: '#a28acb', cyan: '#69b6bc', orange: '#d69c6a' };
 let windowId, snapshot, plan, previewSnapshot, previewMode, controller, generationSnapshot;
 let busy = false;
+let groupDisplay = 'expand', savingGroupDisplay = false;
 let syncVersion = 0, syncTimer, syncPending = false, previewConflict = '';
 let settings = { endpoint: '', model: '', apiKey: '', rememberKey: false };
+let duplicatePreview, duplicateSelection = new Set();
 const mode = () => document.querySelector('input[name="mode"]:checked').value;
 
 function applyAppearance(endpoint) {
@@ -39,6 +41,7 @@ function localizePage() {
   $('undo').textContent = t($('undo').dataset.recovery === 'true' ? '恢复上次中断的整理' : '撤销最近一次整理');
   if (snapshot) showSnapshot();
   if (plan) renderPreview();
+  if (duplicatePreview) renderDuplicates();
 }
 
 async function send(type, extra = {}) {
@@ -70,12 +73,20 @@ function showSortingWait(active) {
 function updateControls() {
   for (const id of ['generate', 'refresh', 'apply', 'add-group', 'discard', 'instruction', 'settings-toggle']) $(id).disabled = busy;
   $('mode-options').disabled = busy;
+  $('group-display').disabled = busy || savingGroupDisplay || !snapshot;
+  $('toggle-groups').disabled = busy || !snapshot?.groups.length;
+  $('toggle-groups').textContent = t(snapshot?.groups.length && snapshot.groups.every(group => group.collapsed) ? '展开所有组' : '折叠所有组');
   $('instruction').disabled = busy || mode() === 'sort-domain';
   for (const input of $('settings-form').elements) input.disabled = busy;
   for (const input of $('preview-groups').querySelectorAll('input,select,button')) input.disabled = busy;
   $('generate').disabled = busy || !snapshot || !candidates(snapshot, mode()).length;
-  $('apply').disabled = busy || !plan || Boolean(previewConflict) || !Object.values(plan.assignments).some(target => target !== 'keep');
+  $('apply').disabled = busy || savingGroupDisplay || !plan || Boolean(previewConflict) || !Object.values(plan.assignments).some(target => target !== 'keep');
   $('undo').disabled = busy || $('undo').dataset.available !== 'true';
+  $('detect-duplicates').disabled = busy || !snapshot;
+  $('discard-duplicates').disabled = busy;
+  $('close-duplicates').disabled = busy || !duplicatePreview || !duplicateSelection.size;
+  $('close-duplicates').textContent = t('确认关闭 {count} 个标签', { count: duplicateSelection.size });
+  for (const input of $('duplicate-groups').querySelectorAll('input')) input.disabled = busy;
 }
 async function updateUndo() {
   const info = await send('undoStatus');
@@ -85,11 +96,54 @@ async function updateUndo() {
   updateControls();
 }
 function discard() {
+  discardDuplicates();
   syncVersion++;
   plan = undefined; previewSnapshot = undefined; previewMode = undefined; generationSnapshot = undefined;
   previewConflict = ''; applyStatus('');
   $('preview-notice').hidden = true;
   $('preview').hidden = true; $('preview-groups').replaceChildren();
+}
+function duplicateStatus(message, error = false) {
+  messages.set('duplicate-status', message);
+  $('duplicate-status').textContent = displayMessage(message);
+  $('duplicate-status').hidden = !message;
+  $('duplicate-status').classList.toggle('error', error);
+}
+function discardDuplicates() {
+  if (duplicatePreview) send('discardDuplicates', { previewId: duplicatePreview.id }).catch(() => {});
+  duplicatePreview = undefined; duplicateSelection = new Set();
+  $('duplicate-preview').hidden = true; $('duplicate-groups').replaceChildren();
+  duplicateStatus('');
+}
+function renderDuplicates() {
+  $('duplicate-preview').hidden = false;
+  const container = $('duplicate-groups'); container.replaceChildren();
+  if (!duplicatePreview.groups.length) container.append(node('p', 'help', t('未发现完整网址相同的网页。')));
+  for (const group of duplicatePreview.groups) {
+    const card = node('article', 'group-card duplicate-card');
+    card.append(node('strong', 'duplicate-url', group.url));
+    for (const tab of group.tabs) {
+      const row = node('label', 'check duplicate-row'); row.dataset.tabId = tab.id;
+      const checkbox = node('input'); checkbox.type = 'checkbox'; checkbox.checked = duplicateSelection.has(tab.id);
+      checkbox.setAttribute('aria-label', t('关闭：{title}', { title: tab.title || tab.url }));
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) duplicateSelection.add(tab.id); else duplicateSelection.delete(tab.id);
+        updateControls();
+      });
+      const detail = node('span', 'duplicate-detail');
+      detail.append(node('span', 'tab-title', tab.title || t('未命名网页')));
+      const labels = [t('窗口 {id} · 标签 {index}', { id: tab.windowId, index: tab.index + 1 }), tab.groupId === -1 ? t('保持未分组') : tab.groupTitle || t('未命名分组')];
+      if (tab.pinned) labels.push(t('固定标签'));
+      if (tab.active && tab.windowId === duplicatePreview.focusedWindowId) labels.push(t('前台激活页'));
+      detail.append(node('span', 'help', labels.join(' · ')));
+      row.append(checkbox, detail); card.append(row);
+    }
+    container.append(card);
+  }
+  $('duplicate-summary').textContent = t('{groups} 组重复网页 · {tabs} 个标签', {
+    groups: duplicatePreview.groups.length, tabs: duplicatePreview.groups.reduce((sum, group) => sum + group.tabs.length, 0)
+  });
+  updateControls();
 }
 function showSnapshot() {
   const sorting = isSortMode(mode()), local = mode() === 'sort-domain';
@@ -249,6 +303,47 @@ $('language').addEventListener('change', async () => {
   } finally { $('language').disabled = false; }
 });
 $('settings-toggle').addEventListener('click', () => showSettings($('settings-panel').hidden));
+$('detect-duplicates').addEventListener('click', async () => {
+  if (busy) return;
+  busy = true; discard(); status(''); updateControls();
+  try {
+    duplicatePreview = await send('scanDuplicates');
+    duplicateSelection = new Set(duplicatePreview.groups.flatMap(group => group.closeIds));
+    renderDuplicates();
+    $('duplicate-preview').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  } catch (error) { status(errorMessage(error), true); }
+  finally { busy = false; updateControls(); if (syncPending) scheduleSync(); }
+});
+$('discard-duplicates').addEventListener('click', () => { discardDuplicates(); updateControls(); });
+$('close-duplicates').addEventListener('click', async () => {
+  if (busy || !duplicatePreview || !duplicateSelection.size) return;
+  busy = true; updateControls(); duplicateStatus(msg('正在复核并关闭所选标签…'));
+  try {
+    const result = await send('closeDuplicates', { previewId: duplicatePreview.id, closeIds: [...duplicateSelection] });
+    discardDuplicates();
+    status(msg('已关闭 {closed} 个标签；跳过 {skipped} 组已变化的重复项；{failed} 个未能关闭。需继续处理时请重新检测。', {
+      closed: result.closed, skipped: result.skippedGroups, failed: result.failed
+    }), Boolean(result.skippedGroups || result.failed));
+  } catch (error) {
+    // 后台可能已消费预览或部分执行，不允许用旧勾选直接重试。
+    discardDuplicates(); status(errorMessage(error), true);
+  } finally {
+    try { await refresh(); } catch (error) { status(errorMessage(error), true); }
+    busy = false; updateControls(); if (syncPending) scheduleSync();
+  }
+});
+$('group-display').addEventListener('change', async () => {
+  const next = $('group-display').value === 'collapse' ? 'collapse' : 'expand';
+  savingGroupDisplay = true; updateControls();
+  try {
+    await chrome.storage.local.set({ groupDisplay: next });
+    groupDisplay = next;
+  } catch (error) { status(errorMessage(error), true); }
+  finally {
+    $('group-display').value = groupDisplay;
+    savingGroupDisplay = false; updateControls();
+  }
+});
 $('settings-form').addEventListener('submit', async event => {
   event.preventDefault();
   try {
@@ -276,6 +371,19 @@ $('mode-options').addEventListener('change', async () => {
 $('refresh').addEventListener('click', async () => {
   discard();
   try { await refresh(); status(msg('已刷新当前窗口。')); } catch (error) { status(errorMessage(error), true); }
+});
+$('toggle-groups').addEventListener('click', async () => {
+  if (busy) return;
+  busy = true; updateControls();
+  try {
+    const result = await send('toggleGroups');
+    status(msg(!result.count ? '当前窗口没有标签组。' : result.collapsed ? '已折叠当前窗口所有组。' : '已展开当前窗口所有组。'));
+  } catch (error) { status(errorMessage(error), true); }
+  finally {
+    try { await syncPreview(); } catch (error) { status(errorMessage(error), true); }
+    busy = false; updateControls();
+    if (syncPending) scheduleSync();
+  }
 });
 $('generate').addEventListener('click', async () => {
   const local = mode() === 'sort-domain';
@@ -338,7 +446,9 @@ $('undo').addEventListener('click', async () => {
 
 async function init() {
   windowId = (await chrome.windows.getCurrent()).id;
-  const [local, session] = await Promise.all([chrome.storage.local.get(['settings', 'mode', 'language']), chrome.storage.session.get('apiKey')]);
+  const [local, session] = await Promise.all([chrome.storage.local.get(['settings', 'mode', 'language', 'groupDisplay']), chrome.storage.session.get('apiKey')]);
+  groupDisplay = local.groupDisplay === 'collapse' ? 'collapse' : 'expand';
+  $('group-display').value = groupDisplay;
   language = resolveLanguage(local.language, chrome.i18n.getUILanguage());
   localizePage();
   settings = { ...settings, ...local.settings };
@@ -351,6 +461,10 @@ async function init() {
   await refresh();
   $('language').disabled = false;
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.groupDisplay) {
+      groupDisplay = changes.groupDisplay.newValue === 'collapse' ? 'collapse' : 'expand';
+      $('group-display').value = groupDisplay;
+    }
     if (area === 'local' && changes.settings) applyAppearance(changes.settings.newValue?.endpoint);
     if (area !== 'local' || !changes.language) return;
     const next = resolveLanguage(changes.language.newValue, chrome.i18n.getUILanguage());

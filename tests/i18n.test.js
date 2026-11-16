@@ -29,7 +29,7 @@ test('全部文案提供日英文翻译且动态参数一致', () => {
 test('界面静态标记、动态文案和应用自身错误全部覆盖翻译', async () => {
   const html = await readFile('extension/sidepanel.html', 'utf8');
   for (const [, key] of html.matchAll(/data-i18n(?:-[\w-]+)?="([^"]+)"/g)) assert.ok(Object.hasOwn(translations, key), key);
-  for (const file of ['sidepanel.js', 'core.js', 'api.js', 'engine.js', 'background.js']) {
+  for (const file of ['sidepanel.js', 'core.js', 'api.js', 'engine.js', 'background.js', 'duplicates.js']) {
     const code = await readFile(`extension/${file}`, 'utf8');
     for (const [, key] of code.matchAll(/'([^'\n]*)'/g)) {
       if (!/[\u4e00-\u9fff]/.test(key)) continue;

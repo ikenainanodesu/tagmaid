@@ -1,5 +1,6 @@
-import { applyPlan, takeSnapshot, undoLast, undoKey } from './engine.js';
+import { applyPlan, takeSnapshot, toggleAllGroups, undoLast, undoKey } from './engine.js';
 import { appearanceForEndpoint } from './appearance.js';
+import { scanDuplicates, closeDuplicates, duplicateKey } from './duplicates.js';
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }).catch(() => {});
@@ -31,12 +32,23 @@ function serial(windowId, operation) {
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || sender.url?.split(/[?#]/)[0] !== chrome.runtime.getURL('sidepanel.html')) return;
   const { type, windowId } = message ?? {};
-  if (!Number.isInteger(windowId) || !['snapshot', 'apply', 'undo', 'undoStatus'].includes(type)) return;
-  serial(windowId, async () => {
+  if (!Number.isInteger(windowId) || !['snapshot', 'apply', 'undo', 'undoStatus', 'toggleGroups', 'scanDuplicates', 'closeDuplicates', 'discardDuplicates'].includes(type)) return;
+  // 跨窗关闭与整理共用队列，避免不同侧栏同时修改同一批标签。
+  serial('browser', async () => {
+    if (type === 'scanDuplicates') return scanDuplicates(chrome, windowId);
+    if (type === 'closeDuplicates') return closeDuplicates(chrome, windowId, message.previewId, message.closeIds);
+    if (type === 'discardDuplicates') {
+      const key = duplicateKey(windowId);
+      const preview = (await chrome.storage.session.get(key))[key];
+      if (preview?.id === message.previewId) await chrome.storage.session.remove(key);
+      return;
+    }
     if (type === 'snapshot') return takeSnapshot(chrome, windowId);
+    if (type === 'toggleGroups') return toggleAllGroups(chrome, windowId);
     if (type === 'apply') {
       if (message.snapshot?.windowId !== windowId) throw new Error('窗口不匹配。');
-      return applyPlan(chrome, message.snapshot, message.mode, message.plan);
+      const { groupDisplay } = await chrome.storage.local.get('groupDisplay');
+      return applyPlan(chrome, message.snapshot, message.mode, message.plan, groupDisplay === 'collapse');
     }
     if (type === 'undo') return undoLast(chrome, windowId);
     const key = undoKey(windowId);
@@ -47,5 +59,5 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
 });
 
 chrome.windows.onRemoved.addListener(windowId => {
-  chrome.storage.session.remove(undoKey(windowId)).catch(() => {});
+  chrome.storage.session.remove([undoKey(windowId), duplicateKey(windowId)]).catch(() => {});
 });

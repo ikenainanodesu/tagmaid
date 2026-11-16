@@ -84,6 +84,10 @@ const language = async value => {
   await select('#language', value);
   await waitFor(() => get(`document.documentElement.lang === ${JSON.stringify(value)} && !document.querySelector('#language').disabled`), `语言 ${value}`);
 };
+const toggleGroups = async collapsed => {
+  await click('#toggle-groups');
+  await waitFor(() => get(`!document.querySelector('#toggle-groups').disabled && chrome.windows.getCurrent().then(win => chrome.tabGroups.query({windowId: win.id})).then(groups => groups.length > 0 && groups.every(group => group.collapsed === ${collapsed}))`), '手动切换所有组');
+};
 try {
   const portFile = await waitFor(async () => {
     if (launchError) throw launchError;
@@ -135,6 +139,20 @@ try {
   assert.equal(await get('document.documentElement.lang'), 'en');
   assert.equal(await get('chrome.runtime.getManifest().name'), 'TagMaid · AI Tab Organizer');
   console.log('实际侧栏已打开，首次匹配浏览器英文。');
+  assert.equal(await get(`document.querySelector('#toggle-groups').textContent`), 'Collapse all groups');
+  await toggleGroups(true);
+  assert.equal(await get(`document.querySelector('#toggle-groups').textContent`), 'Expand all groups');
+  await language('ja');
+  assert.equal(await get(`document.querySelector('#toggle-groups').textContent`), 'すべてのグループを展開');
+  await toggleGroups(false);
+  await language('en');
+  assert.equal(await get(`chrome.storage.local.get('groupDisplay').then(s => s.groupDisplay)`), undefined);
+  assert.equal(await get(`document.querySelector('#group-display').value`), 'expand');
+  await select('#group-display', 'collapse');
+  await waitFor(() => get(`!document.querySelector('#group-display').disabled && chrome.storage.local.get('groupDisplay').then(s => s.groupDisplay === 'collapse')`), '无 API 配置保存折叠选项');
+  assert.ok((await evaluate(worker, 'chrome.tabGroups.query({})')).every(group => !group.collapsed), '更改选项不能立即折叠分组');
+  await cdp('Page.reload', {}, ui);
+  await waitFor(() => get(`!document.querySelector('#group-display').disabled && document.querySelector('#group-display').value === 'collapse'`), '折叠选项重载记忆');
 
   // 无 API 配置时切换、生成本地域名排序，保留排除项并真实应用、撤销。
   await language('ja');
@@ -150,10 +168,12 @@ try {
   await click('#apply');
   await waitFor(() => get(`!document.querySelector('#undo').disabled && document.querySelector('#preview').hidden`), '排序应用');
   assert.match(await get(`document.querySelector('#status').textContent`), /Organized 1 tabs/);
+  assert.ok((await evaluate(worker, 'chrome.tabGroups.query({})')).every(group => group.collapsed), '本地排序后折叠已有组');
   await language('ja');
   assert.match(await get(`document.querySelector('#status').textContent`), /1 個のタブを整理/);
   await click('#undo');
   await waitFor(() => get(`document.querySelector('#status').textContent.includes('復元しました')`), '排序撤销');
+  assert.ok((await evaluate(worker, 'chrome.tabGroups.query({})')).every(group => !group.collapsed), '撤销恢复已有组展开状态');
   await cdp('Page.reload', {}, ui);
   await waitFor(() => get(`document.documentElement.lang === 'ja' && !document.querySelector('#language').disabled`), '语言记忆');
   console.log('独立保存、重载记忆、排序预览保留、应用与撤销通过。');
@@ -176,6 +196,13 @@ try {
   assert.equal(await get(`document.querySelector('.group-header input').value`), '我的 Group 手動');
   assert.equal(await get(`document.querySelector('.group-header select').value`), 'pink');
   assert.equal(await get(`document.querySelector('#instruction').value`), '请用法语命名');
+  await toggleGroups(true);
+  assert.equal(await get(`document.querySelector('#toggle-groups').textContent`), '展开所有组');
+  await toggleGroups(false);
+  assert.equal(await get(`document.querySelector('#preview').hidden`), false);
+  assert.equal(await get(`document.querySelector('.group-header input').value`), '我的 Group 手動');
+  assert.equal(await get(`document.querySelector('.group-header select').value`), 'pink');
+  assert.equal(await get(`document.querySelector('#apply').disabled`), false);
   // 后台校验错误跟随当前语言并在切换后重新渲染。
   await input('.group-header input', '');
   await click('#apply');
@@ -200,6 +227,12 @@ try {
   const groups = await evaluate(worker, 'chrome.tabGroups.query({})');
   assert.ok(groups.some(g => g.title === '我的 Group 手動' && g.color === 'pink'));
   assert.ok(groups.some(g => g.title === '原有 Group 元の組' && g.color === 'green'));
+  assert.ok(groups.every(group => group.collapsed), '新组与未参与分类的已有组全部折叠');
+  const undoBeforeToggle = await evaluate(worker, 'chrome.storage.session.get(null)');
+  await toggleGroups(false);
+  await toggleGroups(true);
+  assert.deepEqual(await evaluate(worker, 'chrome.storage.session.get(null)'), undoBeforeToggle, '手动按钮不能覆盖整理撤销记录');
+  assert.equal(await get(`chrome.storage.local.get('groupDisplay').then(s => s.groupDisplay)`), 'collapse');
   await click('#undo');
   await waitFor(() => get(`document.querySelector('#status').textContent.includes('Restored')`), '分组撤销');
   console.log('生成期间切换、编辑保留、后台错误三语显示、300/382px 布局、分组应用与撤销通过。');
@@ -228,7 +261,14 @@ try {
     });
   })()`);
   const modes = ['rebuild', 'new', 'merge', 'sort-ai', 'sort-domain'];
-  for (const mode of modes) {
+  for (const display of ['collapse', 'expand']) for (const mode of modes) {
+    await select('#group-display', display);
+    await waitFor(() => get(`!document.querySelector('#group-display').disabled && chrome.storage.local.get('groupDisplay').then(s => s.groupDisplay === '${display}')`), '保存分组显示选项');
+    await evaluate(worker, `(async () => {
+      for (const group of await chrome.tabGroups.query({windowId: ${windowId}})) {
+        await chrome.tabGroups.update(group.id, {collapsed: ${display === 'expand'}});
+      }
+    })()`);
     await click(`input[value="${mode}"]`);
     await waitFor(() => get(`!document.querySelector('#generate').disabled`), `${mode} 就绪`);
     const before = await state();
@@ -239,9 +279,10 @@ try {
     await click('#apply');
     await waitFor(() => get(`document.querySelector('#preview').hidden && !document.querySelector('#undo').disabled`), `${mode} 应用`);
     const after = await state();
+    assert.ok(after.filter(t => t.group).every(t => t.group.collapsed === (display === 'collapse')), `${mode} ${display} 必须应用到所有组`);
     if (mode.startsWith('sort-')) {
       assert.deepEqual(after.slice(-previewIds.length).map(t => t.id), previewIds, `${mode} 必须按预览顺序排列`);
-      assert.deepEqual(after.filter(t => t.group), before.filter(t => t.group), `${mode} 必须保留已有组`);
+      assert.deepEqual(after.filter(t => t.group), before.filter(t => t.group).map(t => ({ ...t, group: { ...t.group, collapsed: display === 'collapse' } })), `${mode} 必须保留已有组成员、名称、颜色和顺序`);
     } else {
       assert.ok(after.filter(t => previewIds.includes(t.id)).every(t => t.group), `${mode} 必须分组`);
       if (mode === 'merge') assert.ok(after.filter(t => previewIds.includes(t.id)).every(t => t.group.title === '原有 Group 元の組' && t.group.color === 'green'));
@@ -251,7 +292,96 @@ try {
     await waitFor(() => get(`document.querySelector('#status').textContent.includes('Restored')`), `${mode} 撤销`);
     assert.deepEqual(await state(), before, `${mode} 撤销必须恢复顺序、成员和组属性`);
   }
-  console.log('五种模式的预览、实际标签状态与撤销恢复全部通过。');
+  console.log('五种模式的折叠/展开选择、预览、实际标签状态与撤销恢复全部通过。');
+  await evaluate(worker, `(async () => {
+    const tabs = await chrome.tabs.query({windowId: ${windowId}});
+    await chrome.tabs.ungroup(tabs.filter(tab => tab.groupId !== -1).map(tab => tab.id));
+  })()`);
+  await waitFor(() => get(`document.querySelector('#toggle-groups').disabled`), '无分组时按钮禁用');
+  console.log('独立展开/折叠按钮、三语切换、预览与偏好及撤销记录保留、无组禁用通过。');
+  // 跨窗口去重只操作独立测试配置中的本地页面，不接触用户浏览器。
+  const duplicateFixture = await evaluate(worker, `(async () => {
+    const other = await chrome.windows.create({url: 'about:blank', focused: false});
+    const make = (win, suffix, extra = {}) => chrome.tabs.create({windowId: win, url: '${origin}/duplicates/' + suffix, active: false, ...extra});
+    const a1 = await make(${windowId}, 'a', {active: true});
+    const a2 = await make(${windowId}, 'a');
+    const a3 = await make(other.id, 'a', {active: true});
+    const pin = await make(other.id, 'a', {pinned: true});
+    const b1 = await make(${windowId}, 'b');
+    const b2 = await make(other.id, 'b');
+    const query = await make(other.id, 'a?x=1');
+    const fragment = await make(other.id, 'a#different');
+    const popup = await chrome.windows.create({type: 'popup', url: '${origin}/duplicates/a', focused: false});
+    const group = await chrome.tabs.group({tabIds: [a2.id]});
+    await chrome.tabGroups.update(group, {title: '重复 Group グループ', color: 'blue'});
+    await chrome.windows.update(${windowId}, {focused: true});
+    return {a1: a1.id, a2: a2.id, a3: a3.id, pin: pin.id, b1: b1.id, b2: b2.id, query: query.id, fragment: fragment.id, other: other.id, popup: popup.id};
+  })()`);
+  const fixture = duplicateFixture;
+  await waitFor(() => evaluate(worker, `chrome.tabs.query({}).then(tabs => tabs.filter(t => t.url?.includes('/duplicates/')).every(t => t.status === 'complete' && !t.pendingUrl))`), '去重测试页面加载');
+  const requestCountBeforeDuplicates = requests.length;
+  const scan = async () => {
+    await click('#detect-duplicates');
+    await waitFor(() => get(`!document.querySelector('#duplicate-preview').hidden && !document.querySelector('#detect-duplicates').disabled`), '重复检测预览');
+  };
+  const chosen = () => get(`[...document.querySelectorAll('#duplicate-groups input:checked')].map(input => Number(input.closest('[data-tab-id]').dataset.tabId)).sort((a,b) => a-b)`);
+  const choose = ids => get(`(() => { const ids = ${JSON.stringify(ids)}; for (const el of document.querySelectorAll('#duplicate-groups input')) { el.checked = ids.includes(Number(el.closest('[data-tab-id]').dataset.tabId)); el.dispatchEvent(new Event('change')); } })()`);
+  const currentIds = () => evaluate(worker, 'chrome.tabs.query({}).then(tabs => tabs.map(t => t.id))');
+  await scan();
+  assert.deepEqual(await chosen(), [fixture.a2, fixture.a3, fixture.b2].sort((a,b) => a-b));
+  assert.equal(await get(`document.querySelectorAll('#duplicate-groups [data-tab-id]').length`), 6, '网址参数、片段和独立弹窗不应混入');
+  assert.match(await get(`document.querySelector('#duplicate-groups').textContent`), /重复 Group グループ/);
+  // 手动勾选默认保留页，语言变化不能丢失选择。
+  await choose([fixture.a2, fixture.a3, fixture.b1, fixture.b2]);
+  for (const lang of ['zh-CN', 'ja', 'en']) {
+    await language(lang);
+    assert.deepEqual(await chosen(), [fixture.a2, fixture.a3, fixture.b1, fixture.b2].sort((a,b) => a-b));
+    for (const width of [300, 382]) {
+      await cdp('Emulation.setDeviceMetricsOverride', {width, height: 900, deviceScaleFactor: 1, mobile: false}, ui);
+      const layout = await get(`({client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight})`);
+      assert.ok(layout.scroll <= layout.client, `重复预览 ${lang} ${width}px 横向溢出`);
+      const shot = await cdp('Page.captureScreenshot', {captureBeyondViewport: true, clip: {x: 0, y: 0, width, height: layout.height, scale: 1}}, ui);
+      await writeFile(path.join(root, `duplicates-${lang}-${width}.png`), Buffer.from(shot.data, 'base64'));
+    }
+  }
+  // 保留页导航使整组过期，另一组仍可按手动选择全部关闭。
+  await evaluate(worker, `chrome.tabs.update(${fixture.a1}, {url: '${origin}/duplicates/changed'})`);
+  await waitFor(() => evaluate(worker, `chrome.tabs.get(${fixture.a1}).then(t => t.status === 'complete' && t.url.endsWith('/changed'))`), '保留页导航');
+  await click('#close-duplicates');
+  await waitFor(() => get(`document.querySelector('#duplicate-preview').hidden && !document.querySelector('#detect-duplicates').disabled`), '关闭与跳过结果');
+  assert.match(await get(`document.querySelector('#status').textContent`), /Closed 2 tabs; skipped 1 changed duplicate sets; 0/);
+  let ids = await currentIds();
+  for (const id of [fixture.a1, fixture.a2, fixture.a3, fixture.pin]) assert.ok(ids.includes(id));
+  for (const id of [fixture.b1, fixture.b2]) assert.ok(!ids.includes(id));
+  await scan();
+  // Headless 的窗口独立持有 focused 状态，显式取消旧焦点后再切换。
+  await evaluate(worker, `chrome.windows.update(${windowId}, {focused: false})`);
+  await evaluate(worker, `chrome.windows.update(${fixture.other}, {focused: true})`);
+  assert.equal(await evaluate(worker, `chrome.windows.get(${windowId}).then(win => win.focused)`), false);
+  await click('#close-duplicates');
+  await waitFor(() => get(`document.querySelector('#duplicate-preview').hidden && !document.querySelector('#detect-duplicates').disabled`), '前台窗口变化跳过');
+  assert.match(await get(`document.querySelector('#status').textContent`), /Closed 0 tabs; skipped 1/);
+  await evaluate(worker, `chrome.windows.update(${fixture.other}, {focused: false})`);
+  await evaluate(worker, `chrome.windows.update(${windowId}, {focused: true})`);
+  // 所有默认保留项均能手动选择，关闭整组后不创建撤销关闭记录。
+  const undoKeyBefore = await evaluate(worker, `chrome.storage.session.get('undo:${windowId}')`);
+  await scan();
+  await choose([fixture.a2, fixture.a3, fixture.pin]);
+  await click('#close-duplicates');
+  await waitFor(() => get(`document.querySelector('#duplicate-preview').hidden && !document.querySelector('#detect-duplicates').disabled`), '关闭整组');
+  assert.match(await get(`document.querySelector('#status').textContent`), /Closed 3 tabs; skipped 0/);
+  ids = await currentIds();
+  for (const id of [fixture.a2, fixture.a3, fixture.pin]) assert.ok(!ids.includes(id));
+  assert.deepEqual(await evaluate(worker, `chrome.storage.session.get('undo:${windowId}')`), undoKeyBefore);
+  assert.equal(requests.length, requestCountBeforeDuplicates, '去重不调用 AI');
+  await scan();
+  assert.equal(await get(`document.querySelector('#close-duplicates').disabled`), true);
+  assert.match(await get(`document.querySelector('#duplicate-groups').textContent`), /No pages with identical full URLs/);
+  await click('#generate');
+  await waitFor(() => get(`!document.querySelector('#preview').hidden && document.querySelector('#duplicate-preview').hidden`), '切回整理预览');
+  await scan();
+  assert.equal(await get(`document.querySelector('#preview').hidden`), true);
+  console.log('跨窗口完整网址去重、预选、语言与窄屏、过期组跳过、焦点变化、手动整组关闭、零重复及预览切换全部通过。');
   assert.deepEqual(errors, []);
   await writeFile(path.join(root, 'result.json'), JSON.stringify({ passed: true, browserName, executable, browser: await cdp('Browser.getVersion'), entry: 'Extensions.triggerAction', contextType: contexts[0].contextType, modes, layouts, requests: requests.length, errors }, null, 2));
   console.log(`全部浏览器检查通过。证据：${root}`);

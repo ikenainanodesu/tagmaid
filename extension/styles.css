@@ -6,6 +6,8 @@
 .apply-feedback{flex:1;min-width:0}.apply-bar>button{flex-shrink:0}.apply-feedback p{font-size:11px;line-height:1.5;margin:6px 0 0;overflow-wrap:anywhere}.apply-feedback .error{color:var(--danger)}
 .language-row{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:10px 22px 0;max-width:744px;margin:auto}.language-row label{margin:0!important;color:var(--muted)}.language-row select{width:auto;max-width:160px;padding:5px 9px;font-size:11px}.mode>span:not(.mode-number){min-width:0;overflow-wrap:anywhere}.section-heading>div{min-width:0}.section-heading>button{flex-shrink:0}.group-header select{width:90px;flex-shrink:0}html[lang=en] .eyebrow{letter-spacing:.4px}@media(max-width:320px){.language-row{padding:10px 15px 0}.apply-bar{flex-wrap:wrap}.apply-feedback{flex-basis:100%}}
 
+#detect-duplicates{margin-top:8px}.duplicate-url{display:block;overflow-wrap:anywhere;font-size:11px}.duplicate-row{align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}.duplicate-row input{flex-shrink:0;margin-top:5px}.duplicate-detail{min-width:0;overflow-wrap:anywhere}.duplicate-detail .help{display:block;margin:3px 0}.duplicate-card .tab-title{white-space:normal;overflow-wrap:anywhere}#duplicate-status.error{color:var(--danger)}
+
 /* 六帧图集按离散帧播放；隐藏后移除动画，下次从首帧开始。 */
 .sorting-wait{display:flex;align-items:center;gap:12px;margin:14px 0;padding:12px;background:var(--soft);border:1px solid var(--line);border-radius:12px}
 .sorting-sprite{width:96px;height:96px;flex:0 0 96px;overflow:hidden}

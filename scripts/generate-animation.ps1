@@ -5,7 +5,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $sourcePath = Join-Path $projectRoot 'assets\animation\tagmaid-sorting-source.png'
 $outputName = 'tagmaid-sorting-strip.png'
 if ($DeepSeek) {
-    $sourcePath = Join-Path $projectRoot 'assets\animation\tagmaid-deepseek-sorting-v1.png'
+    $sourcePath = Join-Path $projectRoot 'assets\animation\tagmaid-deepseek-sorting-v2.png'
     $outputName = 'tagmaid-deepseek-sorting-strip.png'
 }
 $outputDirectory = Join-Path $projectRoot 'extension\images'
